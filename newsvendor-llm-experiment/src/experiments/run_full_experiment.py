@@ -90,6 +90,9 @@ class ExperimentRunner:
         logger.info("=== PHASE 1: VALIDATION ===")
         self.current_phase = "validation"
         
+        # Initialize components first
+        await self.initialize()
+        
         # Validate setup
         validation_results = await self.negotiation_engine.validate_setup(self.models)
         
@@ -149,6 +152,10 @@ class ExperimentRunner:
         logger.info("=== PHASE 2: STATISTICAL POWER ===")
         self.current_phase = "statistical_power"
         
+        # Ensure components are initialized
+        if self.negotiation_engine is None:
+            await self.initialize()
+        
         # Generate experiment plan with reduced replications for this phase
         full_plan = self.negotiation_engine.generate_experiment_plan(self.models)
         
@@ -185,6 +192,10 @@ class ExperimentRunner:
         """Run Phase 3: Full Dataset."""
         logger.info("=== PHASE 3: FULL DATASET ===")
         self.current_phase = "full_dataset"
+        
+        # Ensure components are initialized
+        if self.negotiation_engine is None:
+            await self.initialize()
         
         # Generate complete experiment plan
         full_plan = self.negotiation_engine.generate_experiment_plan(self.models)
@@ -531,14 +542,17 @@ def main(phase: str, models: Optional[str], output: Optional[str], concurrent: i
             runner.config['technical']['max_concurrent_models'] = concurrent
         
         # Run experiment based on phase
-        if phase == 'validation':
-            result = asyncio.run(runner.run_validation_phase())
-        elif phase == 'power':
-            result = asyncio.run(runner.run_statistical_power_phase())
-        elif phase == 'full':
-            result = asyncio.run(runner.run_full_dataset_phase())
-        else:  # phase == 'all'
-            result = asyncio.run(runner.run_complete_experiment())
+        async def run_phase():
+            if phase == 'validation':
+                return await runner.run_validation_phase()
+            elif phase == 'power':
+                return await runner.run_statistical_power_phase()
+            elif phase == 'full':
+                return await runner.run_full_dataset_phase()
+            else:  # phase == 'all'
+                return await runner.run_complete_experiment()
+        
+        result = asyncio.run(run_phase())
         
         # Print results summary
         click.echo("\n=== EXPERIMENT RESULTS ===")
