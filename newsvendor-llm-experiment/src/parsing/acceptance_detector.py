@@ -307,8 +307,18 @@ class AcceptanceDetector:
             result = self.detect_acceptance(message, price)
             
             acceptance_correct = result.is_acceptance == expected_acceptance
-            price_correct = result.accepted_price == expected_price
             
-            results[message] = acceptance_correct and price_correct
+            # For price comparison, handle None cases carefully
+            if expected_price is None:
+                price_correct = result.accepted_price is None
+            else:
+                price_correct = result.accepted_price == expected_price
             
+            test_passed = acceptance_correct and price_correct
+            results[message] = test_passed
+            
+            # Debug failed test cases
+            if not test_passed:
+                logger.debug(f"FAILED: '{message}' -> expected accept={expected_acceptance}, price={expected_price}, got accept={result.is_acceptance}, price={result.accepted_price}")
+        
         return results

@@ -264,4 +264,8 @@ class RobustPriceExtractor:
             extracted = self.extract_price(test_input)
             results[test_input] = (extracted == expected)
             
+            # Debug failed test cases
+            if extracted != expected:
+                logger.debug(f"FAILED: '{test_input}' -> expected {expected}, got {extracted}")
+        
         return results
