@@ -39,6 +39,9 @@ jupyter = "^1.0.0"
 newsvendor-experiment = "src.experiments.run_full_experiment:main"
 newsvendor-validate = "src.experiments.run_validation_suite:main"
 newsvendor-analyze = "src.experiments.analyze_results:main"
+newsvendor-debug = "src.utils.debug_data:debug_data"
+newsvendor-safe-analyze = "src.analysis.safe_analysis_runner:main"
+
 
 [build-system]
 requires = ["poetry-core"]
