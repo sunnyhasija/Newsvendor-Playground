@@ -29,16 +29,19 @@ class RobustPriceExtractor:
     # Extraction patterns in order of specificity/reliability
     EXTRACTION_PATTERNS = [
         # Explicit offers (highest confidence)
-        (r'(?:offer|propose|suggest|how about)\s*\$?(\d{1,3})\b', 0.95, "explicit_offer"),
+        (r'(?:offer|propose|suggest)\s*\$?(\d{1,3})\b', 0.95, "explicit_offer"),
         
-        # Acceptance with price
-        (r'(?:accept|agreed?|deal)\s*\$?(\d{1,3})\b', 0.90, "acceptance_with_price"),
+        # How about patterns
+        (r'how about\s*\$?(\d{1,3})\b', 0.95, "how_about"),
+        
+        # Acceptance with price - handles "of 55" pattern
+        (r'(?:accept|agreed?|deal).*?(?:of\s+)?\$?(\d{1,3})\b', 0.90, "acceptance_with_price"),
         
         # Standalone currency prices
         (r'\$(\d{1,3})\b', 0.85, "currency_standalone"),
         
-        # Let's do/make it phrases
-        (r'(?:let\'s do|make it|how about)\s*\$?(\d{1,3})\b', 0.80, "suggestion"),
+        # Let's make it phrases
+        (r'(?:let\'s\s+(?:make\s+it|do)|make\s+it)\s*\$?(\d{1,3})\b', 0.80, "suggestion"),
         
         # Counter-offers
         (r'(?:counter|instead)\s*\$?(\d{1,3})\b', 0.75, "counter_offer"),
@@ -46,11 +49,14 @@ class RobustPriceExtractor:
         # Want/need statements
         (r'(?:want|need|require)\s*\$?(\d{1,3})\b', 0.70, "want_statement"),
         
+        # Price with dollar word
+        (r'(\d{1,3})\s*dollars?\b', 0.65, "dollar_word"),
+        
         # Numerical-only responses (lower confidence)
         (r'^\s*(\d{1,3})\s*$', 0.60, "number_only"),
         
-        # Price with dollar word
-        (r'(\d{1,3})\s*dollars?', 0.65, "dollar_word"),
+        # General number extraction (lowest confidence)
+        (r'\b(\d{1,3})\b', 0.50, "general_number"),
     ]
     
     def __init__(self, config: Optional[Dict[str, Any]] = None):

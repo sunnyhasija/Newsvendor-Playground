@@ -38,12 +38,12 @@ class AcceptanceDetector:
     # Acceptance patterns with confidence scores
     ACCEPTANCE_PATTERNS = [
         (r'\bI accept\b', 0.95, "explicit_accept"),
-        (r'\baccept\b.*\$?(\d+)', 0.90, "accept_with_price"),
+        (r'\baccept\b.*?\$?(\d+)', 0.90, "accept_with_price"),
         (r'\bdeal\b', 0.85, "deal_statement"),
-        (r'\bagreed?\b', 0.80, "agreed_statement"),
-        (r'\bokay?\b.*\$?(\d+)', 0.75, "okay_with_price"),
-        (r'\bfine\b.*\$?(\d+)', 0.70, "fine_with_price"),
-        (r'\byes\b.*\$?(\d+)', 0.65, "yes_with_price"),
+        (r'\bagreed?\b.*?\$?(\d+)', 0.80, "agreed_statement"),
+        (r'\bokay?\b.*?\$?(\d+)', 0.75, "okay_with_price"),
+        (r'\bfine\b,?\s*\$(\d+)', 0.70, "fine_with_price"),  # Fixed: specific pattern for "Fine, $47"
+        (r'\byes\b.*?\$?(\d+)', 0.65, "yes_with_price"),
         (r'\bsounds good\b', 0.60, "sounds_good"),
         (r'\bthat works\b', 0.65, "that_works"),
         (r'\blet\'s do it\b', 0.70, "lets_do_it"),
