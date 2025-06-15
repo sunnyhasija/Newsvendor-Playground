@@ -259,3 +259,10 @@ class StatisticalAnalyzer:
             supported=h3_supported,
             confidence_level=confidence,
             effect_size=overall_effect,
+            statistical_tests=statistical_tests,
+            interpretation=(
+                "Buyer reflection yielded a greater price advantage than supplier reflection, "
+                "supporting role asymmetry." if h3_supported else
+                "No clear evidence that buyer reflection yields greater benefits than supplier reflection."
+            )
+        )
