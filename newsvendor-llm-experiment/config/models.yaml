@@ -103,16 +103,16 @@ models:
 
 # Replication Strategy by Model Tier
 replication_matrix:
-  ultra_ultra: 20
-  ultra_compact: 15
-  ultra_mid: 10
-  ultra_large: 5
-  compact_compact: 15
-  compact_mid: 10
-  compact_large: 5
-  mid_mid: 10
-  mid_large: 5
-  large_large: 5
+  ultra_ultra: 50
+  ultra_compact: 40
+  ultra_mid: 30
+  ultra_large: 20
+  compact_compact: 40
+  compact_mid: 30
+  compact_large: 20
+  mid_mid: 30
+  mid_large: 20
+  large_large: 20
 
 # Model Categories for Analysis
 tiers:
