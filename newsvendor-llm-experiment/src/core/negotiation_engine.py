@@ -46,18 +46,18 @@ def get_replication_count(buyer_model: str, supplier_model: str) -> int:
         'qwen3:latest': 'large'
     }
     
-    # FIXED: Use sorted keys for symmetric lookup
+    # UPDATED: New replication matrix (50-40-30-20)
     REPLICATION_MATRIX = {
-        ('ultra', 'ultra'): 20,
-        ('compact', 'ultra'): 15,  # Fixed: sorted order
-        ('large', 'ultra'): 5,     # Fixed: sorted order
-        ('mid', 'ultra'): 10,      # Fixed: sorted order
-        ('compact', 'compact'): 15,
-        ('compact', 'large'): 5,   # Fixed: sorted order
-        ('compact', 'mid'): 10,    # Fixed: sorted order
-        ('mid', 'mid'): 10,
-        ('large', 'mid'): 5,       # Fixed: sorted order
-        ('large', 'large'): 5
+        ('ultra', 'ultra'): 50,
+        ('compact', 'ultra'): 40,
+        ('large', 'ultra'): 20,
+        ('mid', 'ultra'): 30,
+        ('compact', 'compact'): 40,
+        ('compact', 'large'): 20,
+        ('compact', 'mid'): 30,
+        ('mid', 'mid'): 30,
+        ('large', 'mid'): 20,
+        ('large', 'large'): 20
     }
     
     buyer_tier = MODEL_TIERS.get(buyer_model, 'mid')
@@ -66,7 +66,7 @@ def get_replication_count(buyer_model: str, supplier_model: str) -> int:
     # Always sort for consistent lookup
     key = tuple(sorted([buyer_tier, supplier_tier]))
     
-    return REPLICATION_MATRIX.get(key, 10)  # Default to 10 reps
+    return REPLICATION_MATRIX.get(key, 30)  # Default to 30 reps
 
 
 class NegotiationEngine:
