@@ -1,0 +1,129 @@
+# Model Configuration for Newsvendor Experiment v0.5
+
+models:
+  # Ultra-Compact Models
+  tinyllama:latest:
+    id: "2644915ede35"
+    size_mb: 637
+    size_gb: 0.6
+    tier: "ultra"
+    token_limit: 256
+    chattiness: "very_low"
+    temperature: 0.3
+    top_p: 0.8
+    research_purpose: "Efficiency baseline"
+    architecture: "TinyLlama"
+    
+  qwen2:1.5b:
+    id: "f6daf2b25194"
+    size_mb: 934
+    size_gb: 0.9
+    tier: "ultra"
+    token_limit: 256
+    chattiness: "low"
+    temperature: 0.3
+    top_p: 0.8
+    research_purpose: "Modern ultra-compact"
+    architecture: "Qwen2"
+
+  # Compact Models
+  gemma2:2b:
+    id: "8ccf136fdd52"
+    size_mb: 1600
+    size_gb: 1.6
+    tier: "compact"
+    token_limit: 384
+    chattiness: "low"
+    temperature: 0.4
+    top_p: 0.85
+    research_purpose: "Google's latest 2B"
+    architecture: "Gemma2"
+    
+  phi3:mini:
+    id: "4f2222927938"
+    size_mb: 2200
+    size_gb: 2.2
+    tier: "compact"
+    token_limit: 384
+    chattiness: "low_medium"
+    temperature: 0.4
+    top_p: 0.85
+    research_purpose: "Microsoft's mini"
+    architecture: "Phi3"
+    
+  llama3.2:latest:
+    id: "a80c4f17acd5"
+    size_mb: 2000
+    size_gb: 2.0
+    tier: "compact"
+    token_limit: 384
+    chattiness: "medium_low"
+    temperature: 0.4
+    top_p: 0.85
+    research_purpose: "Meta's efficient"
+    architecture: "Llama3.2"
+
+  # Mid-Range Models
+  mistral:instruct:
+    id: "3944fe81ec14"
+    size_mb: 4100
+    size_gb: 4.1
+    tier: "mid"
+    token_limit: 512
+    chattiness: "medium"
+    temperature: 0.5
+    top_p: 0.9
+    research_purpose: "Instruction-tuned"
+    architecture: "Mistral"
+    
+  qwen:7b:
+    id: "2091ee8c8d8f"
+    size_mb: 4500
+    size_gb: 4.5
+    tier: "mid"
+    token_limit: 512
+    chattiness: "medium"
+    temperature: 0.5
+    top_p: 0.9
+    research_purpose: "Multilingual standard"
+    architecture: "Qwen"
+
+  # Large/Chatty Control
+  qwen3:latest:
+    id: "500a1f067a9f"
+    size_mb: 5200
+    size_gb: 5.2
+    tier: "large"
+    token_limit: 512
+    chattiness: "high"
+    temperature: 0.6
+    top_p: 0.95
+    research_purpose: "Verbose control"
+    architecture: "Qwen3"
+
+# Replication Strategy by Model Tier
+replication_matrix:
+  ultra_ultra: 20
+  ultra_compact: 15
+  ultra_mid: 10
+  ultra_large: 5
+  compact_compact: 15
+  compact_mid: 10
+  compact_large: 5
+  mid_mid: 10
+  mid_large: 5
+  large_large: 5
+
+# Model Categories for Analysis
+tiers:
+  ultra: ["tinyllama:latest", "qwen2:1.5b"]
+  compact: ["gemma2:2b", "phi3:mini", "llama3.2:latest"]
+  mid: ["mistral:instruct", "qwen:7b"]
+  large: ["qwen3:latest"]
+
+# Reflection Configuration
+reflection:
+  ultra_token_limit: 80
+  standard_token_limit: 150
+  structured_template: true
+  validation_required: true

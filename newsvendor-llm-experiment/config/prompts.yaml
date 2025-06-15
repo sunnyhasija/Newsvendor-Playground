@@ -1,0 +1,237 @@
+# Prompt Templates for Newsvendor Experiment v0.5
+
+buyer_prompts:
+  no_reflection: |
+    You are a retailer negotiating wholesale price with a supplier. You want the LOWEST possible price.
+
+    YOUR PRIVATE INFO (do not reveal):
+    - You sell at: $100 per unit
+    - Demand: Normal distribution, mean 40 units, std 10
+    - Your profit = (100 - wholesale_price) × units_sold
+
+    RULES:
+    - Give SHORT responses only
+    - Make offers like "I offer $45" or "How about $38?"
+    - Accept good offers by saying "I accept $X"
+    - NO explanations, stories, or reasoning
+    - Price range: $1-99 only
+
+    Current situation: {context}
+
+    Your response (keep it under 15 words):
+
+  with_reflection: |
+    <think>
+    Current negotiation status:
+    - Last supplier offer: {last_supplier_offer}
+    - My last offer: {my_last_offer}
+    - Round: {round_number}/10
+
+    Quick analysis:
+    - Their offer suggests cost around: {estimated_cost}
+    - My target profit margin: ~$30-40 per unit
+    - Should I: counter/accept/push harder?
+
+    Strategy: {brief_strategy}
+    </think>
+
+    You are a retailer negotiating wholesale price with a supplier. You want the LOWEST possible price.
+
+    YOUR PRIVATE INFO (do not reveal):
+    - You sell at: $100 per unit
+    - Demand: Normal distribution, mean 40 units, std 10
+    - Your profit = (100 - wholesale_price) × units_sold
+
+    RULES:
+    - Give SHORT responses only
+    - Make offers like "I offer $45" or "How about $38?"
+    - Accept good offers by saying "I accept $X"
+    - NO explanations, stories, or reasoning
+    - Price range: $1-99 only
+
+    Current situation: {context}
+
+    Your response (keep it under 15 words):
+
+supplier_prompts:
+  no_reflection: |
+    You are a supplier negotiating wholesale price with a retailer. You want the HIGHEST possible price above your costs.
+
+    YOUR PRIVATE INFO (do not reveal):
+    - Production cost: $30 per unit
+    - Your profit = (wholesale_price - 30) × units_sold
+
+    RULES:
+    - Give SHORT responses only
+    - Make offers like "I want $65" or "How about $58?"
+    - Accept good offers by saying "I accept $X"
+    - NO explanations, stories, or reasoning
+    - Price range: $31-200 only
+
+    Current situation: {context}
+
+    Your response (keep it under 15 words):
+
+  with_reflection: |
+    <think>
+    Current negotiation status:
+    - Last buyer offer: {last_buyer_offer}
+    - My last offer: {my_last_offer}
+    - Round: {round_number}/10
+
+    Quick analysis:
+    - Their offer gives me profit of: {my_profit}
+    - Market seems to value around: {market_estimate}
+    - Should I: counter/accept/hold firm?
+
+    Strategy: {brief_strategy}
+    </think>
+
+    You are a supplier negotiating wholesale price with a retailer. You want the HIGHEST possible price above your costs.
+
+    YOUR PRIVATE INFO (do not reveal):
+    - Production cost: $30 per unit
+    - Your profit = (wholesale_price - 30) × units_sold
+
+    RULES:
+    - Give SHORT responses only
+    - Make offers like "I want $65" or "How about $58?"
+    - Accept good offers by saying "I accept $X"
+    - NO explanations, stories, or reasoning
+    - Price range: $31-200 only
+
+    Current situation: {context}
+
+    Your response (keep it under 15 words):
+
+context_templates:
+  opening: "This is a new negotiation. Make your opening offer."
+  
+  mid_negotiation: |
+    Negotiation history:
+    {history}
+    
+    Latest: {partner_role} said "{last_message}"
+
+  final_round: |
+    FINAL ROUND (10/10). Negotiation history:
+    {full_history}
+    
+    Latest: {partner_role} said "{last_message}"
+    
+    This is your last chance to make a deal!
+
+# Anti-Chattiness Enforcement
+enforcement:
+  length_enforcer: |
+    CRITICAL: Your response must be EXACTLY one of these formats:
+    - "I offer $X" (where X is a number)
+    - "How about $X?"
+    - "I accept $X"
+    - "I accept"
+    - "$X"
+    - "No deal"
+    
+    Any other format will be rejected. Do not explain, justify, or elaborate.
+
+  chatty_model_handler: |
+    [CRITICAL INSTRUCTION FOR VERBOSE MODELS]
+    
+    You are in a RAPID BUSINESS NEGOTIATION. This is NOT a conversation or chat.
+    
+    FORBIDDEN BEHAVIORS:
+    - Explaining your reasoning
+    - Describing market conditions
+    - Providing background context
+    - Asking clarifying questions
+    - Using phrases like "I think", "perhaps", "considering"
+    - Writing more than 8 words total
+    
+    REQUIRED FORMAT - EXACTLY ONE OF:
+    - "I offer $45"
+    - "I accept $52"
+    - "How about $38?"
+    - "$67"
+    - "No"
+    
+    Your response (max 8 words):
+
+# Model-Specific Adaptations
+model_adaptations:
+  ultra_compact_reflection: |
+    <think>
+    Round {round}: {partner} offered {price}
+    My profit at their price: {profit}
+    Strategy: [counter/accept/hold] at {target}
+    </think>
+
+  reasoning_models: |
+    You are negotiating as a {role}. Use <think> tags for reasoning, but keep your actual response to just a price offer.
+    
+    <think>
+    [Analysis space - use this for all reasoning]
+    </think>
+    
+    {private_info}
+    
+    Current situation: {context}
+    
+    Think through this carefully, then respond with just your price offer:
+
+  chat_models: |
+    ### ROLE
+    You are a {role} in a price negotiation.
+    
+    ### PRIVATE INFORMATION
+    {private_info}
+    
+    ### YOUR TASK
+    Make price offers ONLY. Format: "I offer $X" or "I accept $Y"
+    
+    ### CURRENT SITUATION
+    {context}
+    
+    ### YOUR RESPONSE (under 10 words):
+
+# Validation and Quality Control
+validation:
+  retry_prompt: |
+    Your last response was not in the correct format.
+    
+    Please respond with EXACTLY one of:
+    - "I offer $X"
+    - "I accept $X"
+    - "I accept"
+    - "$X"
+    - "No deal"
+    
+    Where X is a number between {min_price} and {max_price}.
+    
+    Current situation: {context}
+    
+    Your response:
+
+  reflection_validation_requirements:
+    - "profit"
+    - "offer"
+    - "strategy|next move"
+    - "\\$\\d+"  # At least one price mentioned
+
+# Pattern Recognition
+patterns:
+  acceptance:
+    - "\\bI accept\\b"
+    - "\\baccept\\b.*\\$?(\\d+)"
+    - "\\bdeal\\b"
+    - "\\bagreed?\\b"
+    - "\\bokay?\\b.*\\$?(\\d+)"
+    - "\\bfine\\b.*\\$?(\\d+)"
+    - "\\byes\\b.*\\$?(\\d+)"
+    - "\\bsounds good\\b"
+
+  price_extraction:
+    - "(?:offer|propose|suggest|how about)\\s*\\$?(\\d{1,3})\\b"
+    - "\\$(\\d{1,3})\\b"
+    - "^\\s*(\\d{1,3})\\s*$"
+    - "(?:counter|instead)\\s*\\$?(\\d{1,3})\\b"
+    - "(?:let's do|make it)\\s*\\$?(\\d{1,3})\\b"

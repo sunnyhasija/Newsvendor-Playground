@@ -1,0 +1,88 @@
+# Experimental Configuration for Newsvendor v0.5
+
+# Game Parameters (CORRECTED)
+game:
+  selling_price: 100  # Retail price (known to buyer only)
+  production_cost: 30  # Supplier cost (known to supplier only)
+  demand_distribution:
+    type: "normal"
+    mean: 40  # CORRECTED: was Uniform[50,150]
+    std: 10   # CORRECTED: Normal(40, 10)
+  optimal_wholesale_price: 65  # Fair split-the-difference
+  
+# Negotiation Rules
+negotiation:
+  max_rounds: 10
+  timeout_seconds: 60
+  price_range:
+    min: 1
+    max: 200
+  buyer_price_range:
+    min: 1
+    max: 99
+  supplier_price_range:
+    min: 31
+    max: 200
+  
+# Success Metrics
+metrics:
+  target_completion_rate: 0.95
+  target_convergence_rate: 0.85
+  target_price_optimality: 8  # Median gap ≤ $8 from $65
+  target_fairness_range: [35, 65]  # 35-65% profit split
+  target_efficiency: 2000  # <2000 tokens/negotiation
+  target_invalid_rate: 0.05  # <5% invalid responses
+
+# Execution Phases
+phases:
+  validation:
+    reps: 1
+    timeout: 30
+    duration_hours: 2
+    
+  statistical_power:
+    reps: 3
+    timeout: 45
+    duration_hours: 6
+    
+  full_dataset:
+    reps: 5
+    timeout: 60
+    duration_hours: 12
+
+# Technical Configuration
+technical:
+  max_concurrent_models: 1  # Start conservative, test concurrency
+  memory_limit_gb: 40
+  retry_attempts: 2
+  validation_checks: true
+  real_time_monitoring: true
+  
+# Analysis Configuration
+analysis:
+  statistical_tests:
+    - "chi_squared"
+    - "welch_t_test"
+    - "mann_whitney_u"
+    - "anova"
+    - "cohens_d"
+    - "cramers_v"
+  
+  visualizations:
+    - "convergence_heatmap"
+    - "price_optimality_boxplot"
+    - "token_efficiency_scatter"
+    - "price_distribution_violin"
+    - "model_synergy_network"
+    - "learning_curves"
+    
+  export_formats: ["csv", "json", "parquet"]
+  
+# Storage Configuration
+storage:
+  raw_transcripts_mb: 35
+  processed_datasets_mb: 20
+  analysis_outputs_mb: 100
+  total_storage_mb: 150
+  backup_enabled: true
+  compression_enabled: true
