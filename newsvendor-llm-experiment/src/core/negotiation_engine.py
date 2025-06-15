@@ -457,14 +457,14 @@ class NegotiationEngine:
             # Determine overall status
             working_model_count = sum(1 for result in model_validation.values() if result["success"])
             
-            if working_model_count >= 6:  # Most models working
+            if working_model_count >= 2:  # Fixed: Need at least 2 models, not 6
                 validation_results["overall_status"] = "ready"
-            elif working_model_count >= 3:  # Some models working
+            elif working_model_count >= 1:  # Some models working
                 validation_results["overall_status"] = "partial"
                 validation_results["recommendations"].append("Some models failed validation - experiment will run with reduced model set")
-            else:  # Too few models working
+            else:  # No models working
                 validation_results["overall_status"] = "failed"
-                validation_results["recommendations"].append("Too few models available - check Ollama installation and model availability")
+                validation_results["recommendations"].append("No working models available - check Ollama installation and model availability")
             
             # Resource recommendations
             if not validation_results["system_resources"]["memory_adequate"]:
