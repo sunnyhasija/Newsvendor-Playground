@@ -9,8 +9,9 @@ import json
 import csv
 import gzip
 import logging
+import os
 from pathlib import Path
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Union
 from datetime import datetime
 from dataclasses import asdict
 import pandas as pd
@@ -118,7 +119,8 @@ class DataExporter:
             
             if 'parquet' in self.export_formats:
                 parquet_path = await self._save_parquet(processed_results, base_filename)
-                saved_files['parquet'] = str(parquet_path)
+                if parquet_path:
+                    saved_files['parquet'] = str(parquet_path)
             
             # Create backup if enabled
             if self.backup_enabled:
@@ -175,7 +177,7 @@ class DataExporter:
         logger.debug(f"Saved CSV to: {output_path}")
         return output_path
     
-    async def _save_parquet(self, results: List[Dict[str, Any]], base_filename: str) -> Path:
+    async def _save_parquet(self, results: List[Dict[str, Any]], base_filename: str) -> Optional[Path]:
         """Save results as Parquet file."""
         
         try:
@@ -326,4 +328,245 @@ class DataExporter:
         
         # Calculate directory sizes
         for subdir in ['raw', 'processed', 'analysis', 'visualizations', 'backups']:
-            dir_path =
+            dir_path = self.output_dir / subdir
+            if dir_path.exists():
+                size_bytes = sum(
+                    f.stat().st_size for f in dir_path.rglob('*') if f.is_file()
+                )
+                size_mb = size_bytes / (1024 * 1024)
+                storage_info["directories"][subdir] = {
+                    "size_mb": round(size_mb, 2),
+                    "file_count": len([f for f in dir_path.rglob('*') if f.is_file()])
+                }
+                storage_info["total_size_mb"] += size_mb
+            else:
+                storage_info["directories"][subdir] = {
+                    "size_mb": 0,
+                    "file_count": 0
+                }
+        
+        storage_info["total_size_mb"] = round(storage_info["total_size_mb"], 2)
+        return storage_info
+    
+    def export_conversations(self, results: List[Dict[str, Any]], format: str = 'json') -> Path:
+        """
+        Export detailed conversation transcripts.
+        
+        Args:
+            results: List of negotiation results with conversation data
+            format: Export format ('json', 'csv', or 'txt')
+            
+        Returns:
+            Path to exported file
+        """
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        if format == 'json':
+            output_path = self.output_dir / 'raw' / f"conversations_{timestamp}.json"
+            
+            conversations = []
+            for result in results:
+                if 'turns' in result:
+                    conversation = {
+                        'negotiation_id': result.get('negotiation_id'),
+                        'buyer_model': result.get('buyer_model'),
+                        'supplier_model': result.get('supplier_model'),
+                        'reflection_pattern': result.get('reflection_pattern'),
+                        'agreed_price': result.get('agreed_price'),
+                        'turns': result['turns']
+                    }
+                    conversations.append(conversation)
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                json.dump(conversations, f, indent=2, default=str)
+        
+        elif format == 'csv':
+            output_path = self.output_dir / 'processed' / f"conversations_{timestamp}.csv"
+            
+            # Flatten conversation turns for CSV
+            rows = []
+            for result in results:
+                if 'turns' in result:
+                    for turn in result['turns']:
+                        row = {
+                            'negotiation_id': result.get('negotiation_id'),
+                            'buyer_model': result.get('buyer_model'),
+                            'supplier_model': result.get('supplier_model'),
+                            'reflection_pattern': result.get('reflection_pattern'),
+                            'final_price': result.get('agreed_price'),
+                            'round_number': turn.get('round_number'),
+                            'speaker': turn.get('speaker'),
+                            'message': turn.get('message'),
+                            'price': turn.get('price'),
+                            'tokens_used': turn.get('tokens_used'),
+                            'generation_time': turn.get('generation_time')
+                        }
+                        rows.append(row)
+            
+            df = pd.DataFrame(rows)
+            df.to_csv(output_path, index=False)
+        
+        elif format == 'txt':
+            output_path = self.output_dir / 'raw' / f"conversations_{timestamp}.txt"
+            
+            with open(output_path, 'w', encoding='utf-8') as f:
+                for result in results:
+                    if 'turns' in result:
+                        f.write(f"\n{'='*80}\n")
+                        f.write(f"NEGOTIATION: {result.get('negotiation_id')}\n")
+                        f.write(f"BUYER: {result.get('buyer_model')}\n")
+                        f.write(f"SUPPLIER: {result.get('supplier_model')}\n")
+                        f.write(f"REFLECTION: {result.get('reflection_pattern')}\n")
+                        f.write(f"FINAL PRICE: ${result.get('agreed_price')}\n")
+                        f.write(f"{'='*80}\n\n")
+                        
+                        for turn in result['turns']:
+                            speaker = turn.get('speaker', 'unknown').upper()
+                            message = turn.get('message', '')
+                            price = turn.get('price')
+                            round_num = turn.get('round_number')
+                            
+                            f.write(f"Round {round_num} - {speaker}:\n")
+                            f.write(f"  Message: {message}\n")
+                            if price:
+                                f.write(f"  Price: ${price}\n")
+                            f.write(f"\n")
+        
+        else:
+            raise ValueError(f"Unsupported format: {format}")
+        
+        logger.info(f"Exported conversations to: {output_path}")
+        return output_path
+    
+    def create_performance_dashboard(self, results: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """Create a performance dashboard with key metrics."""
+        
+        if not results:
+            return {"error": "No results for dashboard"}
+        
+        successful_results = [r for r in results if r.get('completed', False)]
+        
+        dashboard = {
+            "overview": {
+                "total_negotiations": len(results),
+                "successful_rate": len(successful_results) / len(results) * 100,
+                "avg_rounds": sum(r.get('total_rounds', 0) for r in successful_results) / len(successful_results) if successful_results else 0,
+                "avg_tokens": sum(r.get('total_tokens', 0) for r in successful_results) / len(successful_results) if successful_results else 0
+            },
+            "price_metrics": {},
+            "model_performance": {},
+            "reflection_impact": {},
+            "efficiency_metrics": {}
+        }
+        
+        if successful_results:
+            prices = [r.get('agreed_price') for r in successful_results if r.get('agreed_price')]
+            
+            if prices:
+                dashboard["price_metrics"] = {
+                    "mean_price": sum(prices) / len(prices),
+                    "median_price": sorted(prices)[len(prices)//2],
+                    "price_range": f"${min(prices)} - ${max(prices)}",
+                    "optimal_convergence": sum(1 for p in prices if 60 <= p <= 70) / len(prices) * 100,
+                    "price_std": self._calculate_std(prices)
+                }
+            
+            # Model performance analysis
+            model_performance = {}
+            for result in successful_results:
+                for role in ['buyer_model', 'supplier_model']:
+                    model = result.get(role)
+                    if model:
+                        if model not in model_performance:
+                            model_performance[model] = {
+                                'negotiations': 0,
+                                'successes': 0,
+                                'avg_price': 0,
+                                'avg_tokens': 0
+                            }
+                        
+                        model_performance[model]['negotiations'] += 1
+                        if result.get('completed'):
+                            model_performance[model]['successes'] += 1
+                        
+                        if result.get('agreed_price'):
+                            model_performance[model]['avg_price'] += result['agreed_price']
+                        
+                        model_performance[model]['avg_tokens'] += result.get('total_tokens', 0)
+            
+            # Calculate averages
+            for model, stats in model_performance.items():
+                if stats['negotiations'] > 0:
+                    stats['success_rate'] = stats['successes'] / stats['negotiations'] * 100
+                    stats['avg_price'] = stats['avg_price'] / stats['negotiations']
+                    stats['avg_tokens'] = stats['avg_tokens'] / stats['negotiations']
+            
+            dashboard["model_performance"] = model_performance
+            
+            # Reflection impact analysis
+            reflection_stats = {}
+            for result in successful_results:
+                pattern = result.get('reflection_pattern', '00')
+                if pattern not in reflection_stats:
+                    reflection_stats[pattern] = {
+                        'count': 0,
+                        'success_rate': 0,
+                        'avg_price': 0,
+                        'avg_rounds': 0
+                    }
+                
+                reflection_stats[pattern]['count'] += 1
+                if result.get('agreed_price'):
+                    reflection_stats[pattern]['avg_price'] += result['agreed_price']
+                reflection_stats[pattern]['avg_rounds'] += result.get('total_rounds', 0)
+            
+            # Calculate reflection averages
+            for pattern, stats in reflection_stats.items():
+                if stats['count'] > 0:
+                    stats['avg_price'] = stats['avg_price'] / stats['count']
+                    stats['avg_rounds'] = stats['avg_rounds'] / stats['count']
+                    stats['success_rate'] = 100  # All in successful_results
+            
+            dashboard["reflection_impact"] = reflection_stats
+        
+        return dashboard
+    
+    async def export_dashboard(self, results: List[Dict[str, Any]]) -> Path:
+        """Export performance dashboard as JSON."""
+        dashboard = self.create_performance_dashboard(results)
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        output_path = self.output_dir / 'analysis' / f"dashboard_{timestamp}.json"
+        
+        with open(output_path, 'w', encoding='utf-8') as f:
+            json.dump(dashboard, f, indent=2, default=str)
+        
+        logger.info(f"Exported dashboard to: {output_path}")
+        return output_path
+    
+    def cleanup_old_files(self, days_old: int = 30) -> Dict[str, int]:
+        """Clean up files older than specified days."""
+        
+        from datetime import timedelta
+        cutoff_time = datetime.now() - timedelta(days=days_old)
+        
+        cleanup_stats = {
+            "files_removed": 0,
+            "space_freed_mb": 0
+        }
+        
+        for root, dirs, files in os.walk(self.output_dir):
+            for file in files:
+                file_path = Path(root) / file
+                
+                if file_path.stat().st_mtime < cutoff_time.timestamp():
+                    file_size = file_path.stat().st_size
+                    file_path.unlink()
+                    
+                    cleanup_stats["files_removed"] += 1
+                    cleanup_stats["space_freed_mb"] += file_size / (1024 * 1024)
+        
+        cleanup_stats["space_freed_mb"] = round(cleanup_stats["space_freed_mb"], 2)
+        logger.info(f"Cleanup complete: {cleanup_stats}")
+        
+        return cleanup_stats

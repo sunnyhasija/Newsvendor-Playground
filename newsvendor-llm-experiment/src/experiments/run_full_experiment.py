@@ -132,8 +132,8 @@ class ExperimentRunner:
             "total_negotiations": len(validation_results_list),
             "successful": success_count,
             "success_rate": success_rate,
-            "avg_rounds": sum(r.total_rounds for r in validation_results_list) / len(validation_results_list),
-            "avg_tokens": sum(r.total_tokens for r in validation_results_list) / len(validation_results_list),
+            "avg_rounds": sum(r.total_rounds for r in validation_results_list) / len(validation_results_list) if validation_results_list else 0,
+            "avg_tokens": sum(r.total_tokens for r in validation_results_list) / len(validation_results_list) if validation_results_list else 0,
             "ready_for_full_experiment": success_rate >= 0.7
         }
         
@@ -190,7 +190,7 @@ class ExperimentRunner:
         full_plan = self.negotiation_engine.generate_experiment_plan(self.models)
         
         logger.info(f"Running {len(full_plan)} negotiations for complete dataset")
-        logger.info(f"Estimated time: {self._estimate_completion_time(full_plan)} hours")
+        logger.info(f"Estimated time: {self._estimate_completion_time(full_plan):.1f} hours")
         
         # Run all negotiations
         full_results = await self._run_with_progress(
@@ -268,13 +268,16 @@ class ExperimentRunner:
         # Calculate power metrics
         analysis = {
             "total_negotiations": len(results),
-            "overall_success_rate": sum(1 for r in results if r.completed) / len(results),
-            "average_price": sum(r.agreed_price for r in results if r.agreed_price) / 
-                           sum(1 for r in results if r.agreed_price),
+            "overall_success_rate": sum(1 for r in results if r.completed) / len(results) if results else 0,
             "model_pair_analysis": {},
             "reflection_analysis": {},
             "power_assessment": "adequate"  # Will be determined below
         }
+        
+        # Calculate average price for successful negotiations
+        successful_results = [r for r in results if r.completed and r.agreed_price]
+        if successful_results:
+            analysis["average_price"] = sum(r.agreed_price for r in successful_results) / len(successful_results)
         
         # Analyze by model pairs
         for pair, pair_results in by_model_pair.items():
@@ -434,7 +437,7 @@ class ExperimentRunner:
         
         total_minutes = 0
         for config in negotiations:
-            # Use max time of the two models
+            # Use max time of the two models (conservative estimate)
             buyer_time = time_per_negotiation.get("mid", 6)  # Default
             supplier_time = time_per_negotiation.get("mid", 6)
             total_minutes += max(buyer_time, supplier_time)
@@ -476,3 +479,81 @@ class ExperimentRunner:
                     "models_tested": self.models,
                     "engine_stats": self.negotiation_engine.get_performance_stats()
                 }
+            }
+            
+            # Save complete experiment results
+            await self.data_exporter.export_analysis(complete_results, "complete_experiment_results.json")
+            
+            logger.info("Complete experiment finished successfully!")
+            return complete_results
+            
+        except Exception as e:
+            logger.error(f"Experiment failed: {e}")
+            return {
+                "status": "error",
+                "error": str(e),
+                "phase": self.current_phase,
+                "partial_results": self.results
+            }
+        
+        finally:
+            # Cleanup
+            if self.model_manager:
+                await self.model_manager.shutdown()
+
+
+# CLI interface
+@click.command()
+@click.option('--phase', type=click.Choice(['validation', 'power', 'full', 'all']), 
+              default='all', help='Experiment phase to run')
+@click.option('--models', type=str, help='Comma-separated list of models to test')
+@click.option('--output', type=click.Path(), help='Output directory for results')
+@click.option('--concurrent', type=int, default=1, help='Max concurrent negotiations')
+@click.option('--config', type=click.Path(exists=True), help='Configuration file path')
+def main(phase: str, models: Optional[str], output: Optional[str], concurrent: int, config: Optional[str]):
+    """Run the newsvendor negotiation experiment."""
+    
+    try:
+        # Create experiment runner
+        runner = ExperimentRunner(config)
+        
+        # Override models if specified
+        if models:
+            runner.models = [model.strip() for model in models.split(',')]
+        
+        # Override output directory if specified
+        if output:
+            runner.config['storage']['output_dir'] = output
+            runner.data_exporter = DataExporter(runner.config.get('storage', {}))
+        
+        # Override concurrency if specified
+        if concurrent > 1:
+            runner.config['technical']['max_concurrent_models'] = concurrent
+        
+        # Run experiment based on phase
+        if phase == 'validation':
+            result = asyncio.run(runner.run_validation_phase())
+        elif phase == 'power':
+            result = asyncio.run(runner.run_statistical_power_phase())
+        elif phase == 'full':
+            result = asyncio.run(runner.run_full_dataset_phase())
+        else:  # phase == 'all'
+            result = asyncio.run(runner.run_complete_experiment())
+        
+        # Print results summary
+        click.echo("\n=== EXPERIMENT RESULTS ===")
+        click.echo(json.dumps(result, indent=2, default=str))
+        
+        if result.get("status") == "completed":
+            click.echo("\n✅ Experiment completed successfully!")
+        else:
+            click.echo(f"\n❌ Experiment failed: {result.get('status', 'unknown')}")
+            
+    except Exception as e:
+        logger.error(f"CLI error: {e}")
+        click.echo(f"❌ Error: {e}")
+        raise click.Abort()
+
+
+if __name__ == '__main__':
+    main()
