@@ -9,6 +9,37 @@ import sys
 from pathlib import Path
 import click
 
+# Auto-detection imports
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent / "src" / "utils"))
+sys.path.append(str(Path(__file__).parent.parent / "utils"))
+
+try:
+    from file_finder import auto_find_and_load_data, DataFileFinder, load_data_smart
+    AUTO_DETECTION_AVAILABLE = True
+except ImportError:
+    print("⚠️  Auto-detection module not found, using fallback...")
+    AUTO_DETECTION_AVAILABLE = False
+    
+    def auto_find_and_load_data():
+        # Fallback - try common paths
+        common_paths = [
+            "./full_results/processed/complete_20250615_171248.csv",
+            "./temp_results.csv",
+            "./complete_*.csv"
+        ]
+        for path in common_paths:
+            try:
+                import pandas as pd
+                return pd.read_csv(path), path
+            except:
+                continue
+        return None, None
+
+
+
+
 @click.command()
 @click.option('--data', default='temp_results.csv', help='Data file to debug')
 @click.option('--create-sample', is_flag=True, help='Create sample data for testing')

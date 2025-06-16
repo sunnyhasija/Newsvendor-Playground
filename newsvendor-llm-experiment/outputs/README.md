@@ -1,39 +1,45 @@
 # Newsvendor LLM Experiment - Analysis Outputs
 
-**Last Updated:** 2025-06-16 09:25:08  
-**Total Sessions:** 4
+**Last Updated:** 2025-06-16 12:01:43  
+**Total Sessions:** 5
 
 ## Analysis Sessions
 
-### [2025-06-16 09:25:08](./20250616_092508/README.md)
-
-- **Files:** 44
-- **Categories:** tournament, reflection, statistical, personality, comprehensive
-- **Folder:** `20250616_092508/`
-
-### [2025-06-16 09:13:41](./20250616_091341/README.md)
+### [2025-06-16 12:01:21](./20250616_120121/README.md)
 
 - **Files:** 9
 - **Categories:** conversation
-- **Folder:** `20250616_091341/`
+- **Folder:** `20250616_120121/`
 
-### [2025-06-16 08:41:39](./20250616_084139/README.md)
+### [2025-06-16 12:01:18](./20250616_120118/README.md)
 
-- **Files:** 1
-- **Categories:** misc
-- **Folder:** `20250616_084139/`
+- **Files:** 9
+- **Categories:** tournament
+- **Folder:** `20250616_120118/`
 
-### [2025-06-16 08:39:01](./20250616_083901/README.md)
+### [2025-06-16 12:01:16](./20250616_120116/README.md)
 
-- **Files:** 1
-- **Categories:** comprehensive
-- **Folder:** `20250616_083901/`
+- **Files:** 24
+- **Categories:** personality
+- **Folder:** `20250616_120116/`
+
+### [2025-06-16 12:00:50](./20250616_120050/README.md)
+
+- **Files:** 2
+- **Categories:** misc, comprehensive
+- **Folder:** `20250616_120050/`
+
+### [2025-06-16 11:56:04](./20250616_115604/README.md)
+
+- **Files:** 5
+- **Categories:** conversation
+- **Folder:** `20250616_115604/`
 
 
 ## Quick Navigation
 
 ### Latest Analysis
-**[20250616_092508](./20250616_092508/README.md)**
+**[20250616_120121](./20250616_120121/README.md)**
 
 **Quick Links:**
 

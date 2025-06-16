@@ -13,6 +13,37 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 import click
 
+# Auto-detection imports
+import sys
+from pathlib import Path
+sys.path.append(str(Path(__file__).parent / "src" / "utils"))
+sys.path.append(str(Path(__file__).parent.parent / "utils"))
+
+try:
+    from file_finder import auto_find_and_load_data, DataFileFinder, load_data_smart
+    AUTO_DETECTION_AVAILABLE = True
+except ImportError:
+    print("⚠️  Auto-detection module not found, using fallback...")
+    AUTO_DETECTION_AVAILABLE = False
+    
+    def auto_find_and_load_data():
+        # Fallback - try common paths
+        common_paths = [
+            "./full_results/processed/complete_20250615_171248.csv",
+            "./temp_results.csv",
+            "./complete_*.csv"
+        ]
+        for path in common_paths:
+            try:
+                import pandas as pd
+                return pd.read_csv(path), path
+            except:
+                continue
+        return None, None
+
+
+
+
 logger = logging.getLogger(__name__)
 
 class SafeAnalysisRunner:
