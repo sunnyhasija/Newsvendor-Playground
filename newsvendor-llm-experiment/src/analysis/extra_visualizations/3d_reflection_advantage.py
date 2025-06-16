@@ -60,6 +60,31 @@ class ReflectionAdvantageAnalyzer:
         
         advantages = []
         
+        # Debug: Check data structure
+        print(f"Total successful negotiations: {len(self.successful)}")
+        print(f"Available columns: {list(self.successful.columns)}")
+        
+        # Check reflection pattern format and normalize
+        print("Original reflection pattern distribution:")
+        print(self.successful['reflection_pattern'].value_counts())
+        
+        # Normalize reflection patterns to ensure consistent format
+        pattern_mapping = {
+            '0': '00',
+            '1': '01', 
+            '10': '10',
+            '11': '11',
+            0: '00',
+            1: '01',
+            10: '10',
+            11: '11'
+        }
+        
+        self.successful['reflection_pattern'] = self.successful['reflection_pattern'].map(pattern_mapping)
+        
+        print("Normalized reflection pattern distribution:")
+        print(self.successful['reflection_pattern'].value_counts())
+        
         for model in self.model_sizes.keys():
             model_data = self.successful[
                 (self.successful['buyer_model'] == model) | 
@@ -67,13 +92,22 @@ class ReflectionAdvantageAnalyzer:
             ]
             
             if len(model_data) == 0:
+                print(f"No data for model: {model}")
                 continue
             
-            # Calculate baseline (no reflection)
+            print(f"Processing {model}: {len(model_data)} negotiations")
+            
+            # Check if we have baseline data (no reflection)
             baseline_data = model_data[model_data['reflection_pattern'] == '00']
-            baseline_price = baseline_data['agreed_price'].mean() if len(baseline_data) > 0 else 65
-            baseline_rounds = baseline_data['total_rounds'].mean() if len(baseline_data) > 0 else 5
-            baseline_tokens = baseline_data['total_tokens'].mean() if len(baseline_data) > 0 else 500
+            if len(baseline_data) == 0:
+                print(f"  ⚠️  No baseline (00) data for {model}, skipping...")
+                continue
+                
+            baseline_price = baseline_data['agreed_price'].mean()
+            baseline_rounds = baseline_data['total_rounds'].mean() 
+            baseline_tokens = baseline_data['total_tokens'].mean()
+            
+            print(f"  Baseline for {model}: price=${baseline_price:.2f}, rounds={baseline_rounds:.1f}, tokens={baseline_tokens:.0f}")
             
             for pattern in ['01', '10', '11']:
                 pattern_data = model_data[model_data['reflection_pattern'] == pattern]
@@ -84,7 +118,7 @@ class ReflectionAdvantageAnalyzer:
                     avg_rounds = pattern_data['total_rounds'].mean()
                     avg_tokens = pattern_data['total_tokens'].mean()
                     
-                    # Calculate advantages
+                    # Calculate advantages (positive = improvement)
                     price_advantage = abs(65 - baseline_price) - abs(65 - avg_price)  # Closer to optimal = better
                     efficiency_advantage = baseline_rounds - avg_rounds  # Fewer rounds = better
                     token_efficiency = baseline_tokens - avg_tokens  # Fewer tokens = better
@@ -95,6 +129,8 @@ class ReflectionAdvantageAnalyzer:
                         efficiency_advantage * 0.3 +  # 30% weight on round efficiency  
                         (token_efficiency / 100) * 0.3  # 30% weight on token efficiency
                     )
+                    
+                    print(f"  {pattern} ({self.reflection_patterns[pattern]}): price_adv={price_advantage:.2f}, eff_adv={efficiency_advantage:.2f}, combined={combined_advantage:.2f}")
                     
                     advantages.append({
                         'model': model,
@@ -114,8 +150,16 @@ class ReflectionAdvantageAnalyzer:
                         'baseline_rounds': baseline_rounds,
                         'baseline_tokens': baseline_tokens
                     })
+                else:
+                    print(f"  No data for pattern {pattern} ({self.reflection_patterns[pattern]})")
         
-        return pd.DataFrame(advantages)
+        # Return DataFrame
+        if advantages:
+            print(f"\n✅ Successfully calculated {len(advantages)} advantage measurements")
+            return pd.DataFrame(advantages)
+        else:
+            print("❌ No advantages calculated - no models had complete data sets")
+            return pd.DataFrame()  # Return empty DataFrame
     
     def create_3d_advantage_surface(self, advantages_df):
         """Create 3D surface plot showing reflection advantages"""
@@ -475,28 +519,49 @@ def main():
     print("📊 Calculating reflection advantages...")
     advantages_df = analyzer.calculate_reflection_advantages()
     
+    # Check if we have data
+    if advantages_df.empty:
+        print("❌ No data available for analysis. Please check your data file path.")
+        return
+    
+    print(f"✅ Found {len(advantages_df)} advantage calculations")
+    print(f"Models analyzed: {advantages_df['model'].unique()}")
+    print(f"Reflection patterns: {advantages_df['reflection_pattern'].unique()}")
+    
     # Create visualizations
     print("🎨 Generating 3D visualizations...")
     
     # 3D surface plot
     surface_fig = analyzer.create_3d_advantage_surface(advantages_df)
     surface_fig.write_html("reflection_advantage_3d.html")
-    surface_fig.write_image("reflection_advantage_3d.png", width=900, height=700, scale=2)
+    try:
+        surface_fig.write_image("reflection_advantage_3d.png", width=900, height=700, scale=2)
+    except (ValueError, Exception) as e:
+        print(f"⚠️  Skipping PNG export for 3D plot: {e}")
     
     # Advantage heatmap
     heatmap_fig = analyzer.create_advantage_heatmap(advantages_df)
     heatmap_fig.write_html("reflection_advantage_heatmap.html")
-    heatmap_fig.write_image("reflection_advantage_heatmap.png", width=700, height=500, scale=2)
+    try:
+        heatmap_fig.write_image("reflection_advantage_heatmap.png", width=700, height=500, scale=2)
+    except (ValueError, Exception) as e:
+        print(f"⚠️  Skipping PNG export for heatmap: {e}")
     
     # Sweet spot analysis
     sweet_spot_fig, sweet_spot = analyzer.create_sweet_spot_analysis(advantages_df)
     sweet_spot_fig.write_html("reflection_sweet_spot_analysis.html")
-    sweet_spot_fig.write_image("reflection_sweet_spot_analysis.png", width=1000, height=800, scale=2)
+    try:
+        sweet_spot_fig.write_image("reflection_sweet_spot_analysis.png", width=1000, height=800, scale=2)
+    except (ValueError, Exception) as e:
+        print(f"⚠️  Skipping PNG export for sweet spot: {e}")
     
     # Efficiency frontier
     frontier_fig = analyzer.create_efficiency_frontier(advantages_df)
     frontier_fig.write_html("reflection_efficiency_frontier.html")
-    frontier_fig.write_image("reflection_efficiency_frontier.png", width=800, height=600, scale=2)
+    try:
+        frontier_fig.write_image("reflection_efficiency_frontier.png", width=800, height=600, scale=2)
+    except (ValueError, Exception) as e:
+        print(f"⚠️  Skipping PNG export for frontier: {e}")
     
     # Generate report
     print("📝 Generating advantage analysis report...")
@@ -509,10 +574,10 @@ def main():
     
     print("✅ 3D Reflection Advantage Matrix complete!")
     print("📁 Files generated:")
-    print("   - 3D surface plot: reflection_advantage_3d.html/png")
-    print("   - Advantage heatmap: reflection_advantage_heatmap.html/png")
-    print("   - Sweet spot analysis: reflection_sweet_spot_analysis.html/png")
-    print("   - Efficiency frontier: reflection_efficiency_frontier.html/png")
+    print("   - 3D surface plot: reflection_advantage_3d.html")
+    print("   - Advantage heatmap: reflection_advantage_heatmap.html")
+    print("   - Sweet spot analysis: reflection_sweet_spot_analysis.html")
+    print("   - Efficiency frontier: reflection_efficiency_frontier.html")
     print("   - Analysis report: reflection_advantage_report.md")
     print("   - Raw data: reflection_advantages_data.csv")
     
