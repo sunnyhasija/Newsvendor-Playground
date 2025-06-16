@@ -2,6 +2,7 @@
 """
 3D Reflection Advantage Matrix
 Shows the "sweet spot" where reflection provides maximum benefit
+Auto-detects and analyzes the latest experiment results
 """
 
 import pandas as pd
@@ -12,16 +13,85 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import seaborn as sns
 from scipy.interpolate import griddata
+from pathlib import Path
+import json
+import glob
+from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
+
+def find_latest_data_file():
+    """Find the most recent data file from your experiment"""
+    
+    # Look for CSV files in the processed directory
+    csv_patterns = [
+        "./full_results/processed/complete_*.csv",
+        "./full_results/processed/complete_*.csv.gz",
+        "./complete_*.csv",
+        "./temp_results.csv"
+    ]
+    
+    latest_file = None
+    latest_time = 0
+    
+    print("🔍 Searching for data files...")
+    
+    for pattern in csv_patterns:
+        files = glob.glob(pattern)
+        for file in files:
+            file_path = Path(file)
+            if file_path.exists():
+                mtime = file_path.stat().st_mtime
+                if mtime > latest_time:
+                    latest_time = mtime
+                    latest_file = file_path
+                    
+                print(f"  Found: {file} (modified: {datetime.fromtimestamp(mtime)})")
+    
+    if latest_file:
+        print(f"✅ Using latest file: {latest_file}")
+        return str(latest_file)
+    else:
+        print("❌ No data files found!")
+        return None
+
+def load_data_smart(file_path):
+    """Smart data loading that handles both regular and compressed files"""
+    
+    print(f"📊 Loading data from: {file_path}")
+    
+    try:
+        # Check if it's a compressed file
+        if file_path.endswith('.gz'):
+            print("  📦 Detected compressed file, using gzip decompression...")
+            data = pd.read_csv(file_path, compression='gzip')
+        else:
+            print("  📄 Loading regular CSV file...")
+            data = pd.read_csv(file_path)
+        
+        print(f"✅ Successfully loaded {len(data):,} rows with {len(data.columns)} columns")
+        return data
+        
+    except Exception as e:
+        print(f"❌ Error loading file: {e}")
+        return None
 
 class ReflectionAdvantageAnalyzer:
     """Analyze and visualize reflection advantages across model sizes and conditions"""
     
-    def __init__(self, data_path="./full_results/processed/complete_20250615_171248.csv"):
-        """Initialize with negotiation data"""
-        self.data = pd.read_csv(data_path)
+    def __init__(self):
+        """Initialize with auto-detected data"""
+        # Auto-detect latest data file
+        data_path = find_latest_data_file()
+        if not data_path:
+            raise FileNotFoundError("No data files found. Please check your data directory.")
+        
+        self.data = load_data_smart(data_path)
+        if self.data is None:
+            raise ValueError("Failed to load data file")
+        
         self.successful = self.data[self.data['completed'] == True].copy()
+        self.source_file = data_path
         
         # Model size mapping (in GB)
         self.model_sizes = {
@@ -69,18 +139,7 @@ class ReflectionAdvantageAnalyzer:
         print(self.successful['reflection_pattern'].value_counts())
         
         # Normalize reflection patterns to ensure consistent format
-        pattern_mapping = {
-            '0': '00',
-            '1': '01', 
-            '10': '10',
-            '11': '11',
-            0: '00',
-            1: '01',
-            10: '10',
-            11: '11'
-        }
-        
-        self.successful['reflection_pattern'] = self.successful['reflection_pattern'].map(pattern_mapping)
+        self.successful['reflection_pattern'] = self.successful['reflection_pattern'].astype(str).str.zfill(2)
         
         print("Normalized reflection pattern distribution:")
         print(self.successful['reflection_pattern'].value_counts())
@@ -308,281 +367,4 @@ class ReflectionAdvantageAnalyzer:
         
         # Plot 3: Token efficiency by pattern
         pattern_tokens = advantages_df.groupby('reflection_pattern')['token_efficiency'].mean()
-        fig.add_trace(
-            go.Bar(
-                x=[self.reflection_patterns[p] for p in pattern_tokens.index],
-                y=pattern_tokens.values,
-                name='Token Efficiency',
-                showlegend=False,
-                marker_color=['#FF6B6B', '#4ECDC4', '#FFEAA7']
-            ),
-            row=2, col=1
-        )
-        
-        # Plot 4: Sweet spot highlight
-        fig.add_trace(
-            go.Scatter(
-                x=advantages_df['model_size_gb'],
-                y=advantages_df['combined_advantage'],
-                mode='markers',
-                marker=dict(
-                    size=8,
-                    color=advantages_df['reflection_pattern'].map({
-                        '01': '#FF6B6B', '10': '#4ECDC4', '11': '#FFEAA7'
-                    }),
-                    opacity=0.6
-                ),
-                text=advantages_df['model'].str.replace(':latest', ''),
-                name='All Models',
-                showlegend=False
-            ),
-            row=2, col=2
-        )
-        
-        # Highlight sweet spot
-        fig.add_trace(
-            go.Scatter(
-                x=[sweet_spot['model_size_gb']],
-                y=[sweet_spot['combined_advantage']],
-                mode='markers',
-                marker=dict(
-                    size=15,
-                    color='red',
-                    symbol='star',
-                    line=dict(width=2, color='darkred')
-                ),
-                name=f'Sweet Spot: {sweet_spot["model"].replace(":latest", "")}',
-                showlegend=True
-            ),
-            row=2, col=2
-        )
-        
-        fig.update_layout(
-            height=800,
-            width=1000,
-            title_text="Reflection Advantage Sweet Spot Analysis<br>" +
-                      f"<sub>🌟 Sweet Spot: {sweet_spot['model'].replace(':latest', '')} with " +
-                      f"{sweet_spot['reflection_name']} (Score: {sweet_spot['combined_advantage']:.2f})</sub>"
-        )
-        
-        return fig, sweet_spot
-    
-    def create_efficiency_frontier(self, advantages_df):
-        """Create efficiency frontier plot"""
-        
-        fig = go.Figure()
-        
-        # Calculate efficiency metrics
-        advantages_df['tokens_per_round'] = advantages_df['avg_tokens'] / advantages_df['avg_rounds']
-        advantages_df['price_optimality'] = 100 - abs(advantages_df['avg_price'] - 65)  # Higher = better
-        
-        # Color by reflection pattern
-        pattern_colors = {'01': '#FF6B6B', '10': '#4ECDC4', '11': '#FFEAA7'}
-        
-        for pattern in ['01', '10', '11']:
-            pattern_data = advantages_df[advantages_df['reflection_pattern'] == pattern]
-            
-            fig.add_trace(go.Scatter(
-                x=pattern_data['tokens_per_round'],
-                y=pattern_data['price_optimality'],
-                mode='markers+text',
-                marker=dict(
-                    size=pattern_data['model_size_gb'] * 3,  # Size by model size
-                    color=pattern_colors[pattern],
-                    opacity=0.7,
-                    line=dict(width=1, color='black')
-                ),
-                text=pattern_data['model'].str.replace(':latest', ''),
-                textposition="top center",
-                name=self.reflection_patterns[pattern],
-                hovertemplate=(
-                    '<b>%{text}</b><br>' +
-                    'Tokens/Round: %{x:.0f}<br>' +
-                    'Price Optimality: %{y:.1f}<br>' +
-                    '<extra></extra>'
-                )
-            ))
-        
-        # Add Pareto frontier line
-        all_points = advantages_df[['tokens_per_round', 'price_optimality']].values
-        
-        # Simple Pareto frontier (top-right quadrant)
-        sorted_points = all_points[np.argsort(all_points[:, 0])]
-        pareto_points = []
-        max_y = -np.inf
-        
-        for point in sorted_points:
-            if point[1] > max_y:
-                pareto_points.append(point)
-                max_y = point[1]
-        
-        if len(pareto_points) > 1:
-            pareto_points = np.array(pareto_points)
-            fig.add_trace(go.Scatter(
-                x=pareto_points[:, 0],
-                y=pareto_points[:, 1],
-                mode='lines',
-                line=dict(color='red', width=2, dash='dash'),
-                name='Efficiency Frontier',
-                showlegend=True
-            ))
-        
-        fig.update_layout(
-            title='Reflection Efficiency Frontier<br>' +
-                  '<sub>Bubble size = Model size | Top-right = Most efficient</sub>',
-            xaxis_title='Tokens per Round (Lower = More Efficient)',
-            yaxis_title='Price Optimality Score (Higher = Better)',
-            width=800,
-            height=600,
-            showlegend=True
-        )
-        
-        return fig
-    
-    def generate_advantage_report(self, advantages_df, sweet_spot):
-        """Generate comprehensive advantage analysis report"""
-        
-        report = "# Reflection Advantage Matrix Analysis\n\n"
-        
-        # Sweet spot analysis
-        report += f"## 🌟 Sweet Spot Discovery\n\n"
-        report += f"**Optimal Configuration:** {sweet_spot['model'].replace(':latest', '')} with {sweet_spot['reflection_name']}\n"
-        report += f"- **Combined Advantage Score:** {sweet_spot['combined_advantage']:.2f}\n"
-        report += f"- **Price Advantage:** ${sweet_spot['price_advantage']:.2f} closer to optimal\n"
-        report += f"- **Efficiency Advantage:** {sweet_spot['efficiency_advantage']:.1f} fewer rounds\n"
-        report += f"- **Token Efficiency:** {sweet_spot['token_efficiency']:.0f} fewer tokens\n"
-        report += f"- **Model Size:** {sweet_spot['model_size_gb']} GB\n\n"
-        
-        # Pattern analysis
-        report += "## 📊 Reflection Pattern Analysis\n\n"
-        
-        pattern_summary = advantages_df.groupby('reflection_pattern').agg({
-            'combined_advantage': ['mean', 'std', 'max'],
-            'price_advantage': 'mean',
-            'efficiency_advantage': 'mean',
-            'token_efficiency': 'mean'
-        }).round(2)
-        
-        for pattern in ['01', '10', '11']:
-            if pattern in pattern_summary.index:
-                stats = pattern_summary.loc[pattern]
-                report += f"### {self.reflection_patterns[pattern]}\n"
-                report += f"- **Average Advantage:** {stats[('combined_advantage', 'mean')]:.2f} ± {stats[('combined_advantage', 'std')]:.2f}\n"
-                report += f"- **Best Performance:** {stats[('combined_advantage', 'max')]:.2f}\n"
-                report += f"- **Price Improvement:** ${stats[('price_advantage', 'mean')]:.2f}\n"
-                report += f"- **Efficiency Gain:** {stats[('efficiency_advantage', 'mean')]:.1f} rounds\n\n"
-        
-        # Model size analysis
-        report += "## 📏 Model Size Effects\n\n"
-        
-        size_analysis = advantages_df.groupby('model_tier')['combined_advantage'].agg(['mean', 'count']).round(2)
-        tier_names = {1: 'Ultra-Compact', 2: 'Compact', 3: 'Mid-Range', 4: 'Large'}
-        
-        for tier in sorted(size_analysis.index):
-            tier_name = tier_names.get(tier, f'Tier {tier}')
-            stats = size_analysis.loc[tier]
-            report += f"### {tier_name} Models\n"
-            report += f"- **Average Advantage:** {stats['mean']:.2f}\n"
-            report += f"- **Sample Size:** {int(stats['count'])} configurations\n\n"
-        
-        # Key insights
-        report += "## 💡 Key Insights\n\n"
-        
-        # Find best performers
-        best_overall = advantages_df.loc[advantages_df['combined_advantage'].idxmax()]
-        best_price = advantages_df.loc[advantages_df['price_advantage'].idxmax()]
-        best_efficiency = advantages_df.loc[advantages_df['efficiency_advantage'].idxmax()]
-        
-        report += f"1. **Best Overall:** {best_overall['model'].replace(':latest', '')} with {best_overall['reflection_name']}\n"
-        report += f"2. **Best Price Optimizer:** {best_price['model'].replace(':latest', '')} with {best_price['reflection_name']}\n"
-        report += f"3. **Most Efficient:** {best_efficiency['model'].replace(':latest', '')} with {best_efficiency['reflection_name']}\n"
-        
-        # Reflection effectiveness
-        avg_advantages = advantages_df.groupby('reflection_pattern')['combined_advantage'].mean()
-        best_pattern = avg_advantages.idxmax()
-        report += f"4. **Most Effective Reflection:** {self.reflection_patterns[best_pattern]} (avg score: {avg_advantages[best_pattern]:.2f})\n"
-        
-        # Size vs performance correlation
-        size_corr = advantages_df['model_size_gb'].corr(advantages_df['combined_advantage'])
-        report += f"5. **Size-Performance Correlation:** {size_corr:.2f} ({'Positive' if size_corr > 0 else 'Negative'} correlation)\n\n"
-        
-        return report
-
-def main():
-    """Run reflection advantage matrix analysis"""
-    print("🎯 Creating 3D Reflection Advantage Matrix...")
-    
-    # Initialize analyzer
-    analyzer = ReflectionAdvantageAnalyzer()
-    
-    # Calculate advantages
-    print("📊 Calculating reflection advantages...")
-    advantages_df = analyzer.calculate_reflection_advantages()
-    
-    # Check if we have data
-    if advantages_df.empty:
-        print("❌ No data available for analysis. Please check your data file path.")
-        return
-    
-    print(f"✅ Found {len(advantages_df)} advantage calculations")
-    print(f"Models analyzed: {advantages_df['model'].unique()}")
-    print(f"Reflection patterns: {advantages_df['reflection_pattern'].unique()}")
-    
-    # Create visualizations
-    print("🎨 Generating 3D visualizations...")
-    
-    # 3D surface plot
-    surface_fig = analyzer.create_3d_advantage_surface(advantages_df)
-    surface_fig.write_html("reflection_advantage_3d.html")
-    try:
-        surface_fig.write_image("reflection_advantage_3d.png", width=900, height=700, scale=2)
-    except (ValueError, Exception) as e:
-        print(f"⚠️  Skipping PNG export for 3D plot: {e}")
-    
-    # Advantage heatmap
-    heatmap_fig = analyzer.create_advantage_heatmap(advantages_df)
-    heatmap_fig.write_html("reflection_advantage_heatmap.html")
-    try:
-        heatmap_fig.write_image("reflection_advantage_heatmap.png", width=700, height=500, scale=2)
-    except (ValueError, Exception) as e:
-        print(f"⚠️  Skipping PNG export for heatmap: {e}")
-    
-    # Sweet spot analysis
-    sweet_spot_fig, sweet_spot = analyzer.create_sweet_spot_analysis(advantages_df)
-    sweet_spot_fig.write_html("reflection_sweet_spot_analysis.html")
-    try:
-        sweet_spot_fig.write_image("reflection_sweet_spot_analysis.png", width=1000, height=800, scale=2)
-    except (ValueError, Exception) as e:
-        print(f"⚠️  Skipping PNG export for sweet spot: {e}")
-    
-    # Efficiency frontier
-    frontier_fig = analyzer.create_efficiency_frontier(advantages_df)
-    frontier_fig.write_html("reflection_efficiency_frontier.html")
-    try:
-        frontier_fig.write_image("reflection_efficiency_frontier.png", width=800, height=600, scale=2)
-    except (ValueError, Exception) as e:
-        print(f"⚠️  Skipping PNG export for frontier: {e}")
-    
-    # Generate report
-    print("📝 Generating advantage analysis report...")
-    report = analyzer.generate_advantage_report(advantages_df, sweet_spot)
-    with open("reflection_advantage_report.md", "w") as f:
-        f.write(report)
-    
-    # Save data
-    advantages_df.to_csv("reflection_advantages_data.csv", index=False)
-    
-    print("✅ 3D Reflection Advantage Matrix complete!")
-    print("📁 Files generated:")
-    print("   - 3D surface plot: reflection_advantage_3d.html")
-    print("   - Advantage heatmap: reflection_advantage_heatmap.html")
-    print("   - Sweet spot analysis: reflection_sweet_spot_analysis.html")
-    print("   - Efficiency frontier: reflection_efficiency_frontier.html")
-    print("   - Analysis report: reflection_advantage_report.md")
-    print("   - Raw data: reflection_advantages_data.csv")
-    
-    print(f"\n🌟 Sweet Spot Found: {sweet_spot['model'].replace(':latest', '')} with {sweet_spot['reflection_name']}")
-    print(f"   Combined Advantage Score: {sweet_spot['combined_advantage']:.2f}")
-
-if __name__ == "__main__":
-    main()
+        fig.add_

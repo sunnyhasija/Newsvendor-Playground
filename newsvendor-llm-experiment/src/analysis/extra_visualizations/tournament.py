@@ -2,6 +2,7 @@
 """
 LLM Negotiation Tournament Bracket
 March Madness style visualization of model performance
+Auto-detects and analyzes the latest experiment results
 """
 
 import pandas as pd
@@ -13,16 +14,85 @@ import plotly.express as px
 from plotly.subplots import make_subplots
 import seaborn as sns
 from math import sqrt, log2
+from pathlib import Path
+import json
+import glob
+from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
+
+def find_latest_data_file():
+    """Find the most recent data file from your experiment"""
+    
+    # Look for CSV files in the processed directory
+    csv_patterns = [
+        "./full_results/processed/complete_*.csv",
+        "./full_results/processed/complete_*.csv.gz",
+        "./complete_*.csv",
+        "./temp_results.csv"
+    ]
+    
+    latest_file = None
+    latest_time = 0
+    
+    print("🔍 Searching for data files...")
+    
+    for pattern in csv_patterns:
+        files = glob.glob(pattern)
+        for file in files:
+            file_path = Path(file)
+            if file_path.exists():
+                mtime = file_path.stat().st_mtime
+                if mtime > latest_time:
+                    latest_time = mtime
+                    latest_file = file_path
+                    
+                print(f"  Found: {file} (modified: {datetime.fromtimestamp(mtime)})")
+    
+    if latest_file:
+        print(f"✅ Using latest file: {latest_file}")
+        return str(latest_file)
+    else:
+        print("❌ No data files found!")
+        return None
+
+def load_data_smart(file_path):
+    """Smart data loading that handles both regular and compressed files"""
+    
+    print(f"📊 Loading data from: {file_path}")
+    
+    try:
+        # Check if it's a compressed file
+        if file_path.endswith('.gz'):
+            print("  📦 Detected compressed file, using gzip decompression...")
+            data = pd.read_csv(file_path, compression='gzip')
+        else:
+            print("  📄 Loading regular CSV file...")
+            data = pd.read_csv(file_path)
+        
+        print(f"✅ Successfully loaded {len(data):,} rows with {len(data.columns)} columns")
+        return data
+        
+    except Exception as e:
+        print(f"❌ Error loading file: {e}")
+        return None
 
 class TournamentBracketAnalyzer:
     """Create tournament-style analysis of LLM negotiation performance"""
     
-    def __init__(self, data_path="./full_results/processed/complete_20250615_171248.csv"):
-        """Initialize with negotiation data"""
-        self.data = pd.read_csv(data_path)
+    def __init__(self):
+        """Initialize with auto-detected data"""
+        # Auto-detect latest data file
+        data_path = find_latest_data_file()
+        if not data_path:
+            raise FileNotFoundError("No data files found. Please check your data directory.")
+        
+        self.data = load_data_smart(data_path)
+        if self.data is None:
+            raise ValueError("Failed to load data file")
+            
         self.successful = self.data[self.data['completed'] == True].copy()
+        self.source_file = data_path
         
         # Model information
         self.models = list(self.data['buyer_model'].unique())
@@ -158,13 +228,24 @@ class TournamentBracketAnalyzer:
         # Use overall rankings for seeding
         seeded_models = [model for model, score in self.rankings['overall']]
         
+        # Ensure we have exactly 8 models for clean bracket
+        if len(seeded_models) < 8:
+            print(f"⚠️  Only {len(seeded_models)} models found, tournament may be incomplete")
+        
+        # Take top 8 models for bracket
+        seeded_models = seeded_models[:8]
+        
         # Create bracket rounds
         bracket = {
             'quarterfinals': [
-                {'match_id': 'QF1', 'team1': seeded_models[0], 'team2': seeded_models[7], 'winner': None},
-                {'match_id': 'QF2', 'team1': seeded_models[3], 'team2': seeded_models[4], 'winner': None},
-                {'match_id': 'QF3', 'team1': seeded_models[1], 'team2': seeded_models[6], 'winner': None},
-                {'match_id': 'QF4', 'team1': seeded_models[2], 'team2': seeded_models[5], 'winner': None}
+                {'match_id': 'QF1', 'team1': seeded_models[0] if len(seeded_models) > 0 else None, 
+                 'team2': seeded_models[7] if len(seeded_models) > 7 else None, 'winner': None},
+                {'match_id': 'QF2', 'team1': seeded_models[3] if len(seeded_models) > 3 else None, 
+                 'team2': seeded_models[4] if len(seeded_models) > 4 else None, 'winner': None},
+                {'match_id': 'QF3', 'team1': seeded_models[1] if len(seeded_models) > 1 else None, 
+                 'team2': seeded_models[6] if len(seeded_models) > 6 else None, 'winner': None},
+                {'match_id': 'QF4', 'team1': seeded_models[2] if len(seeded_models) > 2 else None, 
+                 'team2': seeded_models[5] if len(seeded_models) > 5 else None, 'winner': None}
             ],
             'semifinals': [
                 {'match_id': 'SF1', 'team1': None, 'team2': None, 'winner': None},
@@ -185,8 +266,9 @@ class TournamentBracketAnalyzer:
         
         # Quarterfinals
         for match in bracket['quarterfinals']:
-            winner = self._simulate_matchup(match['team1'], match['team2'])
-            match['winner'] = winner
+            if match['team1'] and match['team2']:
+                winner = self._simulate_matchup(match['team1'], match['team2'])
+                match['winner'] = winner
         
         # Semifinals
         bracket['semifinals'][0]['team1'] = bracket['quarterfinals'][0]['winner']
@@ -195,16 +277,18 @@ class TournamentBracketAnalyzer:
         bracket['semifinals'][1]['team2'] = bracket['quarterfinals'][3]['winner']
         
         for match in bracket['semifinals']:
-            winner = self._simulate_matchup(match['team1'], match['team2'])
-            match['winner'] = winner
+            if match['team1'] and match['team2']:
+                winner = self._simulate_matchup(match['team1'], match['team2'])
+                match['winner'] = winner
         
         # Final
         bracket['final'][0]['team1'] = bracket['semifinals'][0]['winner']
         bracket['final'][0]['team2'] = bracket['semifinals'][1]['winner']
-        bracket['final'][0]['winner'] = self._simulate_matchup(
-            bracket['final'][0]['team1'], 
-            bracket['final'][0]['team2']
-        )
+        if bracket['final'][0]['team1'] and bracket['final'][0]['team2']:
+            bracket['final'][0]['winner'] = self._simulate_matchup(
+                bracket['final'][0]['team1'], 
+                bracket['final'][0]['team2']
+            )
     
     def _simulate_matchup(self, model1, model2):
         """Simulate head-to-head matchup based on actual negotiation data"""
@@ -264,81 +348,85 @@ class TournamentBracketAnalyzer:
         for i, match in enumerate(self.bracket_structure['quarterfinals']):
             y = qf_y_positions[i]
             
-            # Team boxes
-            team1_color = winner_color if match['winner'] == match['team1'] else loser_color
-            team2_color = winner_color if match['winner'] == match['team2'] else loser_color
-            
-            # Team 1
-            rect1 = patches.Rectangle((0.5, y), 1.5, 0.4, linewidth=1, 
-                                    edgecolor='black', facecolor=team1_color)
-            ax.add_patch(rect1)
-            ax.text(1.25, y + 0.2, match['team1'].replace(':latest', '')[:8], 
-                   ha='center', va='center', fontsize=8, weight='bold')
-            
-            # Team 2  
-            rect2 = patches.Rectangle((0.5, y - 0.5), 1.5, 0.4, linewidth=1,
-                                    edgecolor='black', facecolor=team2_color)
-            ax.add_patch(rect2)
-            ax.text(1.25, y - 0.3, match['team2'].replace(':latest', '')[:8],
-                   ha='center', va='center', fontsize=8, weight='bold')
-            
-            # Connection line to semifinals
-            ax.plot([2, 3], [y - 0.05, y - 0.05], 'k-', linewidth=2)
+            if match['team1'] and match['team2']:
+                # Team boxes
+                team1_color = winner_color if match['winner'] == match['team1'] else loser_color
+                team2_color = winner_color if match['winner'] == match['team2'] else loser_color
+                
+                # Team 1
+                rect1 = patches.Rectangle((0.5, y), 1.5, 0.4, linewidth=1, 
+                                        edgecolor='black', facecolor=team1_color)
+                ax.add_patch(rect1)
+                ax.text(1.25, y + 0.2, match['team1'].replace(':latest', '')[:8], 
+                       ha='center', va='center', fontsize=8, weight='bold')
+                
+                # Team 2  
+                rect2 = patches.Rectangle((0.5, y - 0.5), 1.5, 0.4, linewidth=1,
+                                        edgecolor='black', facecolor=team2_color)
+                ax.add_patch(rect2)
+                ax.text(1.25, y - 0.3, match['team2'].replace(':latest', '')[:8],
+                       ha='center', va='center', fontsize=8, weight='bold')
+                
+                # Connection line to semifinals
+                ax.plot([2, 3], [y - 0.05, y - 0.05], 'k-', linewidth=2)
         
         # Draw semifinals
         sf_y_positions = [1.75, 6.25]
         for i, match in enumerate(self.bracket_structure['semifinals']):
             y = sf_y_positions[i]
             
-            # Team boxes
-            team1_color = winner_color if match['winner'] == match['team1'] else loser_color
-            team2_color = winner_color if match['winner'] == match['team2'] else loser_color
-            
-            # Team 1
-            rect1 = patches.Rectangle((3.5, y), 1.5, 0.4, linewidth=1,
-                                    edgecolor='black', facecolor=team1_color)
-            ax.add_patch(rect1)
-            ax.text(4.25, y + 0.2, match['team1'].replace(':latest', '')[:8],
-                   ha='center', va='center', fontsize=8, weight='bold')
-            
-            # Team 2
-            rect2 = patches.Rectangle((3.5, y - 0.5), 1.5, 0.4, linewidth=1,
-                                    edgecolor='black', facecolor=team2_color)
-            ax.add_patch(rect2)
-            ax.text(4.25, y - 0.3, match['team2'].replace(':latest', '')[:8],
-                   ha='center', va='center', fontsize=8, weight='bold')
-            
-            # Connection line to final
-            ax.plot([5, 6], [y - 0.05, y - 0.05], 'k-', linewidth=2)
+            if match['team1'] and match['team2']:
+                # Team boxes
+                team1_color = winner_color if match['winner'] == match['team1'] else loser_color
+                team2_color = winner_color if match['winner'] == match['team2'] else loser_color
+                
+                # Team 1
+                rect1 = patches.Rectangle((3.5, y), 1.5, 0.4, linewidth=1,
+                                        edgecolor='black', facecolor=team1_color)
+                ax.add_patch(rect1)
+                ax.text(4.25, y + 0.2, match['team1'].replace(':latest', '')[:8],
+                       ha='center', va='center', fontsize=8, weight='bold')
+                
+                # Team 2
+                rect2 = patches.Rectangle((3.5, y - 0.5), 1.5, 0.4, linewidth=1,
+                                        edgecolor='black', facecolor=team2_color)
+                ax.add_patch(rect2)
+                ax.text(4.25, y - 0.3, match['team2'].replace(':latest', '')[:8],
+                       ha='center', va='center', fontsize=8, weight='bold')
+                
+                # Connection line to final
+                ax.plot([5, 6], [y - 0.05, y - 0.05], 'k-', linewidth=2)
         
         # Draw final
         final_match = self.bracket_structure['final'][0]
         y = 4
         
-        # Championship teams
-        team1_color = winner_color if final_match['winner'] == final_match['team1'] else loser_color
-        team2_color = winner_color if final_match['winner'] == final_match['team2'] else loser_color
-        
-        # Team 1
-        rect1 = patches.Rectangle((6.5, y), 1.5, 0.4, linewidth=2,
-                                edgecolor='gold', facecolor=team1_color)
-        ax.add_patch(rect1)
-        ax.text(7.25, y + 0.2, final_match['team1'].replace(':latest', '')[:8],
-               ha='center', va='center', fontsize=9, weight='bold')
-        
-        # Team 2
-        rect2 = patches.Rectangle((6.5, y - 0.5), 1.5, 0.4, linewidth=2,
-                                edgecolor='gold', facecolor=team2_color)
-        ax.add_patch(rect2)
-        ax.text(7.25, y - 0.3, final_match['team2'].replace(':latest', '')[:8],
-               ha='center', va='center', fontsize=9, weight='bold')
-        
-        # Champion
-        champion_rect = patches.Rectangle((8.5, y - 0.05), 1.2, 0.3, linewidth=3,
-                                        edgecolor='gold', facecolor='#FFD700')
-        ax.add_patch(champion_rect)
-        ax.text(9.1, y + 0.1, '👑 ' + final_match['winner'].replace(':latest', '')[:6],
-               ha='center', va='center', fontsize=10, weight='bold')
+        if final_match['team1'] and final_match['team2']:
+            # Championship teams
+            team1_color = winner_color if final_match['winner'] == final_match['team1'] else loser_color
+            team2_color = winner_color if final_match['winner'] == final_match['team2'] else loser_color
+            
+            # Team 1
+            rect1 = patches.Rectangle((6.5, y), 1.5, 0.4, linewidth=2,
+                                    edgecolor='gold', facecolor=team1_color)
+            ax.add_patch(rect1)
+            ax.text(7.25, y + 0.2, final_match['team1'].replace(':latest', '')[:8],
+                   ha='center', va='center', fontsize=9, weight='bold')
+            
+            # Team 2
+            rect2 = patches.Rectangle((6.5, y - 0.5), 1.5, 0.4, linewidth=2,
+                                    edgecolor='gold', facecolor=team2_color)
+            ax.add_patch(rect2)
+            ax.text(7.25, y - 0.3, final_match['team2'].replace(':latest', '')[:8],
+                   ha='center', va='center', fontsize=9, weight='bold')
+            
+            # Champion
+            if final_match['winner']:
+                champion_rect = patches.Rectangle((8.5, y - 0.05), 1.2, 0.3, linewidth=3,
+                                                edgecolor='gold', facecolor='#FFD700')
+                ax.add_patch(champion_rect)
+                ax.text(9.1, y + 0.1, '👑 ' + final_match['winner'].replace(':latest', '')[:6],
+                       ha='center', va='center', fontsize=10, weight='bold')
         
         # Labels
         ax.text(1.25, 0.2, 'QUARTERFINALS', ha='center', va='center', 
@@ -381,68 +469,72 @@ class TournamentBracketAnalyzer:
             y_pos = y_positions[round_name]
             
             for i, match in enumerate(matches):
-                y = y_pos[i]
-                
-                # Team 1
-                fig.add_trace(go.Scatter(
-                    x=[x], y=[y + 0.2],
-                    mode='markers+text',
-                    marker=dict(
-                        size=40,
-                        color='green' if match['winner'] == match['team1'] else 'lightcoral',
-                        line=dict(width=2, color='black')
-                    ),
-                    text=match['team1'].replace(':latest', '')[:8] if match['team1'] else '',
-                    textposition='middle center',
-                    textfont=dict(size=10, color='white'),
-                    showlegend=False,
-                    hovertemplate=f"<b>{match['team1']}</b><br>Status: {'Winner' if match['winner'] == match['team1'] else 'Eliminated'}<extra></extra>"
-                ))
-                
-                # Team 2
-                fig.add_trace(go.Scatter(
-                    x=[x], y=[y - 0.2],
-                    mode='markers+text',
-                    marker=dict(
-                        size=40,
-                        color='green' if match['winner'] == match['team2'] else 'lightcoral',
-                        line=dict(width=2, color='black')
-                    ),
-                    text=match['team2'].replace(':latest', '')[:8] if match['team2'] else '',
-                    textposition='middle center',
-                    textfont=dict(size=10, color='white'),
-                    showlegend=False,
-                    hovertemplate=f"<b>{match['team2']}</b><br>Status: {'Winner' if match['winner'] == match['team2'] else 'Eliminated'}<extra></extra>"
-                ))
-                
-                # Connection lines
-                if round_name != 'final':
-                    next_x = rounds[list(rounds.keys())[list(rounds.keys()).index(round_name) + 1]]['x']
-                    fig.add_trace(go.Scatter(
-                        x=[x + 0.1, next_x - 0.1], y=[y, y],
-                        mode='lines',
-                        line=dict(color='black', width=2),
-                        showlegend=False,
-                        hoverinfo='skip'
-                    ))
+                if i < len(y_pos):
+                    y = y_pos[i]
+                    
+                    # Team 1
+                    if match['team1']:
+                        fig.add_trace(go.Scatter(
+                            x=[x], y=[y + 0.2],
+                            mode='markers+text',
+                            marker=dict(
+                                size=40,
+                                color='green' if match['winner'] == match['team1'] else 'lightcoral',
+                                line=dict(width=2, color='black')
+                            ),
+                            text=match['team1'].replace(':latest', '')[:8],
+                            textposition='middle center',
+                            textfont=dict(size=10, color='white'),
+                            showlegend=False,
+                            hovertemplate=f"<b>{match['team1']}</b><br>Status: {'Winner' if match['winner'] == match['team1'] else 'Eliminated'}<extra></extra>"
+                        ))
+                    
+                    # Team 2
+                    if match['team2']:
+                        fig.add_trace(go.Scatter(
+                            x=[x], y=[y - 0.2],
+                            mode='markers+text',
+                            marker=dict(
+                                size=40,
+                                color='green' if match['winner'] == match['team2'] else 'lightcoral',
+                                line=dict(width=2, color='black')
+                            ),
+                            text=match['team2'].replace(':latest', '')[:8],
+                            textposition='middle center',
+                            textfont=dict(size=10, color='white'),
+                            showlegend=False,
+                            hovertemplate=f"<b>{match['team2']}</b><br>Status: {'Winner' if match['winner'] == match['team2'] else 'Eliminated'}<extra></extra>"
+                        ))
+                    
+                    # Connection lines
+                    if round_name != 'final':
+                        next_x = rounds[list(rounds.keys())[list(rounds.keys()).index(round_name) + 1]]['x']
+                        fig.add_trace(go.Scatter(
+                            x=[x + 0.1, next_x - 0.1], y=[y, y],
+                            mode='lines',
+                            line=dict(color='black', width=2),
+                            showlegend=False,
+                            hoverinfo='skip'
+                        ))
         
         # Champion highlight
         champion = self.bracket_structure['final'][0]['winner']
-        fig.add_trace(go.Scatter(
-            x=[6], y=[4],
-            mode='markers+text',
-            marker=dict(
-                size=60,
-                color='gold',
-                line=dict(width=3, color='darkgoldenrod'),
-                symbol='star'
-            ),
-            text='👑<br>' + champion.replace(':latest', '')[:6],
-            textposition='middle center',
-            textfont=dict(size=12, color='black'),
-            name='Champion',
-            hovertemplate=f"<b>🏆 CHAMPION: {champion}</b><extra></extra>"
-        ))
+        if champion:
+            fig.add_trace(go.Scatter(
+                x=[6], y=[4],
+                mode='markers+text',
+                marker=dict(
+                    size=60,
+                    color='gold',
+                    line=dict(width=3, color='darkgoldenrod'),
+                    symbol='star'
+                ),
+                text='👑<br>' + champion.replace(':latest', '')[:6],
+                textposition='middle center',
+                textfont=dict(size=12, color='black'),
+                name='Champion',
+                hovertemplate=f"<b>🏆 CHAMPION: {champion}</b><extra></extra>"
+            ))
         
         # Round labels
         fig.add_trace(go.Scatter(
@@ -500,21 +592,22 @@ class TournamentBracketAnalyzer:
             
             cat_data = ranking_df[ranking_df['category'] == category].sort_values('rank')
             
-            fig.add_trace(
-                go.Bar(
-                    x=cat_data['model'],
-                    y=cat_data['score'],
-                    marker_color=[self.tier_colors.get(model + ':latest', '#666666') 
-                                for model in cat_data['model']],
-                    showlegend=False,
-                    text=cat_data['rank'].astype(str),
-                    textposition='outside',
-                    hovertemplate='<b>%{x}</b><br>Rank: %{text}<br>Score: %{y:.1f}<extra></extra>'
-                ),
-                row=row, col=col
-            )
-            
-            fig.update_xaxes(tickangle=45, row=row, col=col)
+            if len(cat_data) > 0:
+                fig.add_trace(
+                    go.Bar(
+                        x=cat_data['model'],
+                        y=cat_data['score'],
+                        marker_color=[self.tier_colors.get(model + ':latest', '#666666') 
+                                    for model in cat_data['model']],
+                        showlegend=False,
+                        text=cat_data['rank'].astype(str),
+                        textposition='outside',
+                        hovertemplate='<b>%{x}</b><br>Rank: %{text}<br>Score: %{y:.1f}<extra></extra>'
+                    ),
+                    row=row, col=col
+                )
+                
+                fig.update_xaxes(tickangle=45, row=row, col=col)
         
         fig.update_layout(
             title='LLM Negotiation Performance Rankings<br><sub>Multiple performance dimensions</sub>',
@@ -605,43 +698,61 @@ class TournamentBracketAnalyzer:
         """Generate tournament analysis report"""
         
         champion = self.bracket_structure['final'][0]['winner']
-        runner_up = (self.bracket_structure['final'][0]['team1'] 
-                    if self.bracket_structure['final'][0]['team2'] == champion 
-                    else self.bracket_structure['final'][0]['team2'])
+        runner_up = None
         
-        report = "# 🏆 LLM Negotiation Tournament Report\n\n"
+        if champion:
+            final_match = self.bracket_structure['final'][0]
+            runner_up = (final_match['team1'] 
+                        if final_match['team2'] == champion 
+                        else final_match['team2'])
+        
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        report = f"# 🏆 LLM Negotiation Tournament Report\n"
+        report += f"**Analysis Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        report += f"**Source File:** {self.source_file}\n\n"
         
         # Championship results
         report += f"## 👑 Tournament Results\n\n"
-        report += f"**🥇 CHAMPION:** {champion.replace(':latest', '')}\n"
-        report += f"**🥈 Runner-up:** {runner_up.replace(':latest', '')}\n\n"
+        if champion:
+            report += f"**🥇 CHAMPION:** {champion.replace(':latest', '')}\n"
+            if runner_up:
+                report += f"**🥈 Runner-up:** {runner_up.replace(':latest', '')}\n"
+        else:
+            report += f"**Tournament incomplete - insufficient data for final**\n"
+        report += "\n"
         
         # Path to victory
-        report += f"### {champion.replace(':latest', '')} - Path to Victory\n\n"
-        
-        # Quarterfinal
-        qf_match = next(m for m in self.bracket_structure['quarterfinals'] 
-                       if m['winner'] == champion)
-        opponent_qf = qf_match['team1'] if qf_match['team2'] == champion else qf_match['team2']
-        report += f"**Quarterfinal:** Defeated {opponent_qf.replace(':latest', '')}\n"
-        
-        # Semifinal
-        sf_match = next(m for m in self.bracket_structure['semifinals'] 
-                       if m['winner'] == champion)
-        opponent_sf = sf_match['team1'] if sf_match['team2'] == champion else sf_match['team2']
-        report += f"**Semifinal:** Defeated {opponent_sf.replace(':latest', '')}\n"
-        
-        # Final
-        report += f"**Final:** Defeated {runner_up.replace(':latest', '')}\n\n"
-        
-        # Champion analysis
-        champ_stats = self.model_stats[champion]
-        report += f"### Champion Performance Profile\n\n"
-        report += f"- **Overall Score:** {dict(self.rankings['overall'])[champion]:.1f}\n"
-        report += f"- **Success Rate:** {champ_stats['success_rate']:.1%}\n"
-        report += f"- **Price Optimality:** ${champ_stats['distance_from_optimal']:.2f} from optimal\n"
-        report += f"- **Efficiency:** {champ_stats['avg_rounds']:.1f} rounds average\n"
-        report += f"- **Consistency Score:** {champ_stats['consistency_score']:.1f}\n\n"
+        if champion:
+            report += f"### {champion.replace(':latest', '')} - Path to Victory\n\n"
+            
+            # Quarterfinal
+            qf_match = next((m for m in self.bracket_structure['quarterfinals'] 
+                           if m['winner'] == champion), None)
+            if qf_match:
+                opponent_qf = qf_match['team1'] if qf_match['team2'] == champion else qf_match['team2']
+                report += f"**Quarterfinal:** Defeated {opponent_qf.replace(':latest', '')}\n"
+            
+            # Semifinal
+            sf_match = next((m for m in self.bracket_structure['semifinals'] 
+                           if m['winner'] == champion), None)
+            if sf_match:
+                opponent_sf = sf_match['team1'] if sf_match['team2'] == champion else sf_match['team2']
+                report += f"**Semifinal:** Defeated {opponent_sf.replace(':latest', '')}\n"
+            
+            # Final
+            if runner_up:
+                report += f"**Final:** Defeated {runner_up.replace(':latest', '')}\n\n"
+            
+            # Champion analysis
+            if champion in self.model_stats:
+                champ_stats = self.model_stats[champion]
+                report += f"### Champion Performance Profile\n\n"
+                report += f"- **Overall Score:** {dict(self.rankings['overall'])[champion]:.1f}\n"
+                report += f"- **Success Rate:** {champ_stats['success_rate']:.1%}\n"
+                report += f"- **Price Optimality:** ${champ_stats['distance_from_optimal']:.2f} from optimal\n"
+                report += f"- **Efficiency:** {champ_stats['avg_rounds']:.1f} rounds average\n"
+                report += f"- **Consistency Score:** {champ_stats['consistency_score']:.1f}\n\n"
         
         # Tournament insights
         report += "## 🎯 Tournament Insights\n\n"
@@ -700,53 +811,73 @@ def main():
     """Run tournament bracket analysis"""
     print("🏆 Creating LLM Negotiation Tournament Bracket...")
     
-    # Initialize analyzer
-    analyzer = TournamentBracketAnalyzer()
+    # Initialize analyzer with auto-detection
+    try:
+        analyzer = TournamentBracketAnalyzer()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"❌ {e}")
+        return
+    
+    # Create timestamp for file naming
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Create visualizations
     print("🎨 Generating tournament visualizations...")
     
     # Static bracket
     static_fig = analyzer.create_tournament_bracket_viz()
-    static_fig.savefig("tournament_bracket_static.png", dpi=300, bbox_inches='tight')
+    static_fig.savefig(f"tournament_bracket_static_{timestamp}.png", dpi=300, bbox_inches='tight')
     
     # Interactive bracket
     interactive_fig = analyzer.create_interactive_bracket()
-    interactive_fig.write_html("tournament_bracket_interactive.html")
-    interactive_fig.write_image("tournament_bracket_interactive.png", width=1000, height=600, scale=2)
+    interactive_fig.write_html(f"tournament_bracket_interactive_{timestamp}.html")
+    try:
+        interactive_fig.write_image(f"tournament_bracket_interactive_{timestamp}.png", width=1000, height=600, scale=2)
+    except Exception as e:
+        print(f"⚠️  Skipping PNG export for interactive bracket: {e}")
     
     # Performance rankings
     rankings_fig = analyzer.create_performance_rankings()
-    rankings_fig.write_html("tournament_performance_rankings.html")
-    rankings_fig.write_image("tournament_performance_rankings.png", width=1200, height=800, scale=2)
+    rankings_fig.write_html(f"tournament_performance_rankings_{timestamp}.html")
+    try:
+        rankings_fig.write_image(f"tournament_performance_rankings_{timestamp}.png", width=1200, height=800, scale=2)
+    except Exception as e:
+        print(f"⚠️  Skipping PNG export for rankings: {e}")
     
     # Head-to-head matrix
     h2h_fig = analyzer.create_head_to_head_matrix()
-    h2h_fig.write_html("tournament_head_to_head_matrix.html")
-    h2h_fig.write_image("tournament_head_to_head_matrix.png", width=700, height=600, scale=2)
+    h2h_fig.write_html(f"tournament_head_to_head_matrix_{timestamp}.html")
+    try:
+        h2h_fig.write_image(f"tournament_head_to_head_matrix_{timestamp}.png", width=700, height=600, scale=2)
+    except Exception as e:
+        print(f"⚠️  Skipping PNG export for H2H matrix: {e}")
     
     # Generate report
     print("📝 Generating tournament report...")
     report = analyzer.generate_tournament_report()
-    with open("tournament_analysis_report.md", "w") as f:
+    report_path = f"tournament_analysis_report_{timestamp}.md"
+    with open(report_path, "w") as f:
         f.write(report)
     
     # Save tournament data
-    import json
-    with open("tournament_bracket_data.json", "w") as f:
-        json.dump(analyzer.bracket_structure, f, indent=2)
+    tournament_data_path = f"tournament_bracket_data_{timestamp}.json"
+    with open(tournament_data_path, "w") as f:
+        json.dump(analyzer.bracket_structure, f, indent=2, default=str)
     
     print("✅ Tournament Bracket Analysis complete!")
     print("📁 Files generated:")
-    print("   - Static bracket: tournament_bracket_static.png")
-    print("   - Interactive bracket: tournament_bracket_interactive.html/png")
-    print("   - Performance rankings: tournament_performance_rankings.html/png")
-    print("   - Head-to-head matrix: tournament_head_to_head_matrix.html/png")
-    print("   - Tournament report: tournament_analysis_report.md")
-    print("   - Bracket data: tournament_bracket_data.json")
+    print(f"   - Static bracket: tournament_bracket_static_{timestamp}.png")
+    print(f"   - Interactive bracket: tournament_bracket_interactive_{timestamp}.html/png")
+    print(f"   - Performance rankings: tournament_performance_rankings_{timestamp}.html/png")
+    print(f"   - Head-to-head matrix: tournament_head_to_head_matrix_{timestamp}.html/png")
+    print(f"   - Tournament report: {report_path}")
+    print(f"   - Bracket data: {tournament_data_path}")
     
     champion = analyzer.bracket_structure['final'][0]['winner']
-    print(f"\n🏆 CHAMPION: {champion.replace(':latest', '')}")
+    if champion:
+        print(f"\n🏆 CHAMPION: {champion.replace(':latest', '')}")
+    else:
+        print(f"\n⚠️  Tournament incomplete - check data for final results")
 
 if __name__ == "__main__":
     main()

@@ -2,6 +2,7 @@
 """
 LLM Negotiation Personality Fingerprints
 Creates unique "negotiation DNA" radar charts for each model
+Auto-detects and analyzes the latest experiment results
 """
 
 import pandas as pd
@@ -12,16 +13,85 @@ from math import pi
 import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
+from pathlib import Path
+import json
+import glob
+from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
+
+def find_latest_data_file():
+    """Find the most recent data file from your experiment"""
+    
+    # Look for CSV files in the processed directory
+    csv_patterns = [
+        "./full_results/processed/complete_*.csv",
+        "./full_results/processed/complete_*.csv.gz",
+        "./complete_*.csv",
+        "./temp_results.csv"
+    ]
+    
+    latest_file = None
+    latest_time = 0
+    
+    print("🔍 Searching for data files...")
+    
+    for pattern in csv_patterns:
+        files = glob.glob(pattern)
+        for file in files:
+            file_path = Path(file)
+            if file_path.exists():
+                mtime = file_path.stat().st_mtime
+                if mtime > latest_time:
+                    latest_time = mtime
+                    latest_file = file_path
+                    
+                print(f"  Found: {file} (modified: {datetime.fromtimestamp(mtime)})")
+    
+    if latest_file:
+        print(f"✅ Using latest file: {latest_file}")
+        return str(latest_file)
+    else:
+        print("❌ No data files found!")
+        return None
+
+def load_data_smart(file_path):
+    """Smart data loading that handles both regular and compressed files"""
+    
+    print(f"📊 Loading data from: {file_path}")
+    
+    try:
+        # Check if it's a compressed file
+        if file_path.endswith('.gz'):
+            print("  📦 Detected compressed file, using gzip decompression...")
+            data = pd.read_csv(file_path, compression='gzip')
+        else:
+            print("  📄 Loading regular CSV file...")
+            data = pd.read_csv(file_path)
+        
+        print(f"✅ Successfully loaded {len(data):,} rows with {len(data.columns)} columns")
+        return data
+        
+    except Exception as e:
+        print(f"❌ Error loading file: {e}")
+        return None
 
 class LLMPersonalityAnalyzer:
     """Analyze and visualize LLM negotiation personalities"""
     
-    def __init__(self, data_path="./full_results/processed/complete_20250615_171248.csv"):
-        """Initialize with negotiation data"""
-        self.data = pd.read_csv(data_path)
+    def __init__(self):
+        """Initialize with auto-detected data"""
+        # Auto-detect latest data file
+        data_path = find_latest_data_file()
+        if not data_path:
+            raise FileNotFoundError("No data files found. Please check your data directory.")
+        
+        self.data = load_data_smart(data_path)
+        if self.data is None:
+            raise ValueError("Failed to load data file")
+            
         self.successful = self.data[self.data['completed'] == True].copy()
+        self.source_file = data_path
         
         # Model tier mapping
         self.model_tiers = {
@@ -106,12 +176,12 @@ class LLMPersonalityAnalyzer:
         if len(buyer_prices) > 0:
             # Buyers are aggressive when they push for very low prices
             buyer_aggression = np.mean([(65 - price) / 35 for price in buyer_prices if price < 65])
-            buyer_aggression = max(0, min(1, buyer_aggression))
+            buyer_aggression = max(0, min(1, buyer_aggression)) if not np.isnan(buyer_aggression) else 0
         
         if len(supplier_prices) > 0:
             # Suppliers are aggressive when they push for very high prices  
             supplier_aggression = np.mean([(price - 65) / 35 for price in supplier_prices if price > 65])
-            supplier_aggression = max(0, min(1, supplier_aggression))
+            supplier_aggression = max(0, min(1, supplier_aggression)) if not np.isnan(supplier_aggression) else 0
         
         # Combined aggressiveness
         total_aggression = (buyer_aggression + supplier_aggression) / 2
@@ -376,7 +446,11 @@ class LLMPersonalityAnalyzer:
     def generate_personality_report(self, personalities):
         """Generate text report of personality insights"""
         
-        report = "# LLM Negotiation Personality Analysis Report\n\n"
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        report = f"# LLM Negotiation Personality Analysis Report\n"
+        report += f"**Analysis Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        report += f"**Source File:** {self.source_file}\n\n"
         
         # Find extremes
         dimensions = [
@@ -430,51 +504,91 @@ def main():
     """Run personality fingerprint analysis"""
     print("🧬 Creating LLM Negotiation Personality Fingerprints...")
     
-    # Initialize analyzer
-    analyzer = LLMPersonalityAnalyzer()
+    # Initialize analyzer with auto-detection
+    try:
+        analyzer = LLMPersonalityAnalyzer()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"❌ {e}")
+        return
     
     # Calculate personalities
+    print("📊 Calculating personality metrics...")
     personalities = analyzer.calculate_personality_metrics()
+    
+    if not personalities:
+        print("❌ No personality data calculated. Please check your data.")
+        return
+    
+    print(f"✅ Calculated personalities for {len(personalities)} models")
+    
+    # Create timestamp for file naming
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Create visualizations
     print("📊 Generating individual radar charts...")
     for model_name in personalities.keys():
         fig = analyzer.create_radar_chart(personalities, model_name)
         if fig:
-            fig.write_html(f"personality_radar_{model_name.replace(':', '_')}.html")
-            fig.write_image(f"personality_radar_{model_name.replace(':', '_')}.png", 
-                          width=500, height=500, scale=2)
+            clean_name = model_name.replace(':', '_')
+            fig.write_html(f"personality_radar_{clean_name}_{timestamp}.html")
+            try:
+                fig.write_image(f"personality_radar_{clean_name}_{timestamp}.png", 
+                              width=500, height=500, scale=2)
+            except Exception as e:
+                print(f"⚠️  Skipping PNG export for {model_name}: {e}")
     
     print("📊 Generating comparison visualizations...")
     
     # Comparison radar
     comp_fig = analyzer.create_comparison_radar(personalities)
-    comp_fig.write_html("personality_comparison_radar.html")
-    comp_fig.write_image("personality_comparison_radar.png", width=800, height=600, scale=2)
+    comp_fig.write_html(f"personality_comparison_radar_{timestamp}.html")
+    try:
+        comp_fig.write_image(f"personality_comparison_radar_{timestamp}.png", width=800, height=600, scale=2)
+    except Exception as e:
+        print(f"⚠️  Skipping PNG export for comparison radar: {e}")
     
     # Heatmap
     heatmap_fig = analyzer.create_personality_heatmap(personalities)
-    heatmap_fig.write_html("personality_heatmap.html")
-    heatmap_fig.write_image("personality_heatmap.png", width=800, height=600, scale=2)
+    heatmap_fig.write_html(f"personality_heatmap_{timestamp}.html")
+    try:
+        heatmap_fig.write_image(f"personality_heatmap_{timestamp}.png", width=800, height=600, scale=2)
+    except Exception as e:
+        print(f"⚠️  Skipping PNG export for heatmap: {e}")
     
     # Tier comparison
     tier_fig = analyzer.create_tier_comparison(personalities)
-    tier_fig.write_html("personality_tier_comparison.html")
-    tier_fig.write_image("personality_tier_comparison.png", width=700, height=600, scale=2)
+    tier_fig.write_html(f"personality_tier_comparison_{timestamp}.html")
+    try:
+        tier_fig.write_image(f"personality_tier_comparison_{timestamp}.png", width=700, height=600, scale=2)
+    except Exception as e:
+        print(f"⚠️  Skipping PNG export for tier comparison: {e}")
     
     # Generate report
     print("📝 Generating personality report...")
     report = analyzer.generate_personality_report(personalities)
-    with open("personality_analysis_report.md", "w") as f:
+    report_path = f"personality_analysis_report_{timestamp}.md"
+    with open(report_path, "w") as f:
         f.write(report)
+    
+    # Save personality data
+    personality_data = []
+    for model, data in personalities.items():
+        row = {'model': model}
+        row.update(data)
+        personality_data.append(row)
+    
+    personality_df = pd.DataFrame(personality_data)
+    data_path = f"personality_data_{timestamp}.csv"
+    personality_df.to_csv(data_path, index=False)
     
     print("✅ LLM Personality Fingerprints complete!")
     print("📁 Files generated:")
-    print("   - Individual radar charts: personality_radar_*.html/png")
-    print("   - Comparison radar: personality_comparison_radar.html/png")
-    print("   - Heatmap: personality_heatmap.html/png") 
-    print("   - Tier comparison: personality_tier_comparison.html/png")
-    print("   - Analysis report: personality_analysis_report.md")
+    print(f"   - Individual radar charts: personality_radar_*_{timestamp}.html/png")
+    print(f"   - Comparison radar: personality_comparison_radar_{timestamp}.html/png")
+    print(f"   - Heatmap: personality_heatmap_{timestamp}.html/png") 
+    print(f"   - Tier comparison: personality_tier_comparison_{timestamp}.html/png")
+    print(f"   - Analysis report: {report_path}")
+    print(f"   - Personality data: {data_path}")
 
 if __name__ == "__main__":
     main()

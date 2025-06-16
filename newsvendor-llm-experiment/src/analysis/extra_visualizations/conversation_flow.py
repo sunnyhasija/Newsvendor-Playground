@@ -2,6 +2,7 @@
 """
 Conversation Flow Diagrams
 Sankey diagrams showing negotiation paths from opening bids to final prices
+Auto-detects and analyzes the latest experiment results
 """
 
 import pandas as pd
@@ -10,16 +11,84 @@ import plotly.graph_objects as go
 import plotly.express as px
 from plotly.subplots import make_subplots
 import json
+from pathlib import Path
+import glob
+from datetime import datetime
 import warnings
 warnings.filterwarnings('ignore')
+
+def find_latest_data_file():
+    """Find the most recent data file from your experiment"""
+    
+    # Look for CSV files in the processed directory
+    csv_patterns = [
+        "./full_results/processed/complete_*.csv",
+        "./full_results/processed/complete_*.csv.gz",
+        "./complete_*.csv",
+        "./temp_results.csv"
+    ]
+    
+    latest_file = None
+    latest_time = 0
+    
+    print("🔍 Searching for data files...")
+    
+    for pattern in csv_patterns:
+        files = glob.glob(pattern)
+        for file in files:
+            file_path = Path(file)
+            if file_path.exists():
+                mtime = file_path.stat().st_mtime
+                if mtime > latest_time:
+                    latest_time = mtime
+                    latest_file = file_path
+                    
+                print(f"  Found: {file} (modified: {datetime.fromtimestamp(mtime)})")
+    
+    if latest_file:
+        print(f"✅ Using latest file: {latest_file}")
+        return str(latest_file)
+    else:
+        print("❌ No data files found!")
+        return None
+
+def load_data_smart(file_path):
+    """Smart data loading that handles both regular and compressed files"""
+    
+    print(f"📊 Loading data from: {file_path}")
+    
+    try:
+        # Check if it's a compressed file
+        if file_path.endswith('.gz'):
+            print("  📦 Detected compressed file, using gzip decompression...")
+            data = pd.read_csv(file_path, compression='gzip')
+        else:
+            print("  📄 Loading regular CSV file...")
+            data = pd.read_csv(file_path)
+        
+        print(f"✅ Successfully loaded {len(data):,} rows with {len(data.columns)} columns")
+        return data
+        
+    except Exception as e:
+        print(f"❌ Error loading file: {e}")
+        return None
 
 class ConversationFlowAnalyzer:
     """Analyze and visualize conversation flows in negotiations"""
     
-    def __init__(self, data_path="./full_results/processed/complete_20250615_171248.csv"):
-        """Initialize with negotiation data"""
-        self.data = pd.read_csv(data_path)
+    def __init__(self):
+        """Initialize with auto-detected data"""
+        # Auto-detect latest data file
+        data_path = find_latest_data_file()
+        if not data_path:
+            raise FileNotFoundError("No data files found. Please check your data directory.")
+        
+        self.data = load_data_smart(data_path)
+        if self.data is None:
+            raise ValueError("Failed to load data file")
+            
         self.successful = self.data[self.data['completed'] == True].copy()
+        self.source_file = data_path
         
         # Parse conversation data if available
         self.conversations = self._parse_conversations()
@@ -318,6 +387,10 @@ class ConversationFlowAnalyzer:
             '11': '#d62728'
         }
         
+        # Normalize reflection patterns
+        for conv in sample_conversations:
+            conv['reflection_pattern'] = str(conv['reflection_pattern']).zfill(2)
+        
         for conv in sample_conversations:
             if len(conv['turns']) >= 2 and conv['completed']:
                 rounds = []
@@ -422,7 +495,7 @@ class ConversationFlowAnalyzer:
                     
                     convergence_data.append({
                         'negotiation_id': conv['negotiation_id'],
-                        'reflection_pattern': conv['reflection_pattern'],
+                        'reflection_pattern': str(conv['reflection_pattern']).zfill(2),
                         'buyer_model': conv['buyer_model'],
                         'supplier_model': conv['supplier_model'],
                         'initial_gap': initial_gap,
@@ -547,6 +620,7 @@ class ConversationFlowAnalyzer:
         # Add successful conversations
         for conv in self.conversations:
             conv['outcome'] = 'success'
+            conv['reflection_pattern'] = str(conv['reflection_pattern']).zfill(2)
             all_conversations.append(conv)
         
         # Add failed conversations (synthetic)
@@ -557,7 +631,7 @@ class ConversationFlowAnalyzer:
                 'negotiation_id': row['negotiation_id'],
                 'buyer_model': row['buyer_model'],
                 'supplier_model': row['supplier_model'],
-                'reflection_pattern': row['reflection_pattern'],
+                'reflection_pattern': str(row['reflection_pattern']).zfill(2),
                 'final_price': None,
                 'total_rounds': row['total_rounds'],
                 'completed': False,
@@ -652,7 +726,11 @@ class ConversationFlowAnalyzer:
         if not self.conversations:
             return "# No conversation data available for flow analysis"
         
-        report = "# Conversation Flow Analysis Report\n\n"
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        report = f"# Conversation Flow Analysis Report\n"
+        report += f"**Analysis Date:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n"
+        report += f"**Source File:** {self.source_file}\n\n"
         
         # Basic statistics
         total_conversations = len(self.conversations)
@@ -733,12 +811,19 @@ def main():
     """Run conversation flow analysis"""
     print("🌊 Creating Conversation Flow Diagrams...")
     
-    # Initialize analyzer
-    analyzer = ConversationFlowAnalyzer()
+    # Initialize analyzer with auto-detection
+    try:
+        analyzer = ConversationFlowAnalyzer()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"❌ {e}")
+        return
     
     if not analyzer.conversations:
         print("❌ No conversation data available")
         return
+    
+    # Create timestamp for file naming
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
     # Create visualizations
     print("🎨 Generating flow visualizations...")
@@ -746,40 +831,53 @@ def main():
     # Opening to final Sankey
     sankey_fig = analyzer.create_opening_to_final_sankey()
     if sankey_fig:
-        sankey_fig.write_html("conversation_flow_sankey.html")
-        sankey_fig.write_image("conversation_flow_sankey.png", width=1200, height=700, scale=2)
+        sankey_fig.write_html(f"conversation_flow_sankey_{timestamp}.html")
+        try:
+            sankey_fig.write_image(f"conversation_flow_sankey_{timestamp}.png", width=1200, height=700, scale=2)
+        except Exception as e:
+            print(f"⚠️  Skipping PNG export for Sankey: {e}")
     
     # Round-by-round flow
     round_flow_fig = analyzer.create_round_by_round_flow()
     if round_flow_fig:
-        round_flow_fig.write_html("conversation_round_by_round_flow.html")
-        round_flow_fig.write_image("conversation_round_by_round_flow.png", width=1000, height=600, scale=2)
+        round_flow_fig.write_html(f"conversation_round_by_round_flow_{timestamp}.html")
+        try:
+            round_flow_fig.write_image(f"conversation_round_by_round_flow_{timestamp}.png", width=1000, height=600, scale=2)
+        except Exception as e:
+            print(f"⚠️  Skipping PNG export for round flow: {e}")
     
     # Convergence pattern analysis
     convergence_fig = analyzer.create_convergence_pattern_analysis()
     if convergence_fig:
-        convergence_fig.write_html("conversation_convergence_patterns.html")
-        convergence_fig.write_image("conversation_convergence_patterns.png", width=1200, height=800, scale=2)
+        convergence_fig.write_html(f"conversation_convergence_patterns_{timestamp}.html")
+        try:
+            convergence_fig.write_image(f"conversation_convergence_patterns_{timestamp}.png", width=1200, height=800, scale=2)
+        except Exception as e:
+            print(f"⚠️  Skipping PNG export for convergence: {e}")
     
     # Success/failure paths
     success_fail_fig = analyzer.create_success_failure_paths()
     if success_fail_fig:
-        success_fail_fig.write_html("conversation_success_failure_paths.html")
-        success_fail_fig.write_image("conversation_success_failure_paths.png", width=1000, height=600, scale=2)
+        success_fail_fig.write_html(f"conversation_success_failure_paths_{timestamp}.html")
+        try:
+            success_fail_fig.write_image(f"conversation_success_failure_paths_{timestamp}.png", width=1000, height=600, scale=2)
+        except Exception as e:
+            print(f"⚠️  Skipping PNG export for success/failure: {e}")
     
     # Generate report
     print("📝 Generating flow analysis report...")
     report = analyzer.generate_flow_report()
-    with open("conversation_flow_report.md", "w") as f:
+    report_path = f"conversation_flow_report_{timestamp}.md"
+    with open(report_path, "w") as f:
         f.write(report)
     
     print("✅ Conversation Flow Diagrams complete!")
     print("📁 Files generated:")
-    print("   - Sankey flow diagram: conversation_flow_sankey.html/png")
-    print("   - Round-by-round flow: conversation_round_by_round_flow.html/png")
-    print("   - Convergence patterns: conversation_convergence_patterns.html/png")
-    print("   - Success/failure paths: conversation_success_failure_paths.html/png")
-    print("   - Flow analysis report: conversation_flow_report.md")
+    print(f"   - Sankey flow diagram: conversation_flow_sankey_{timestamp}.html/png")
+    print(f"   - Round-by-round flow: conversation_round_by_round_flow_{timestamp}.html/png")
+    print(f"   - Convergence patterns: conversation_convergence_patterns_{timestamp}.html/png")
+    print(f"   - Success/failure paths: conversation_success_failure_paths_{timestamp}.html/png")
+    print(f"   - Flow analysis report: {report_path}")
 
 if __name__ == "__main__":
     main()

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Comprehensive Final Analysis for Complete Newsvendor Dataset
-Save as final_comprehensive_analysis.py
+Auto-detects and analyzes the latest experiment results
 """
 
 import pandas as pd
@@ -11,16 +11,81 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
 import json
+import glob
+from datetime import datetime
+import warnings
+warnings.filterwarnings('ignore')
+
+def find_latest_data_file():
+    """Find the most recent data file from your experiment"""
+    
+    # Look for CSV files in the processed directory
+    csv_patterns = [
+        "./full_results/processed/complete_*.csv",
+        "./full_results/processed/complete_*.csv.gz",
+        "./complete_*.csv",
+        "./temp_results.csv"
+    ]
+    
+    latest_file = None
+    latest_time = 0
+    
+    print("🔍 Searching for data files...")
+    
+    for pattern in csv_patterns:
+        files = glob.glob(pattern)
+        for file in files:
+            file_path = Path(file)
+            if file_path.exists():
+                mtime = file_path.stat().st_mtime
+                if mtime > latest_time:
+                    latest_time = mtime
+                    latest_file = file_path
+                    
+                print(f"  Found: {file} (modified: {datetime.fromtimestamp(mtime)})")
+    
+    if latest_file:
+        print(f"✅ Using latest file: {latest_file}")
+        return str(latest_file)
+    else:
+        print("❌ No data files found!")
+        return None
+
+def load_data_smart(file_path):
+    """Smart data loading that handles both regular and compressed files"""
+    
+    print(f"📊 Loading data from: {file_path}")
+    
+    try:
+        # Check if it's a compressed file
+        if file_path.endswith('.gz'):
+            print("  📦 Detected compressed file, using gzip decompression...")
+            data = pd.read_csv(file_path, compression='gzip')
+        else:
+            print("  📄 Loading regular CSV file...")
+            data = pd.read_csv(file_path)
+        
+        print(f"✅ Successfully loaded {len(data):,} rows with {len(data.columns)} columns")
+        return data
+        
+    except Exception as e:
+        print(f"❌ Error loading file: {e}")
+        return None
 
 def load_and_analyze_complete_dataset():
-    """Complete analysis of the full 2840-negotiation dataset"""
+    """Complete analysis of the latest dataset with auto-detection"""
     
     print("🎯 COMPREHENSIVE NEWSVENDOR LLM ANALYSIS")
     print("="*60)
     
-    # Load the complete dataset
-    data_path = "./full_results/processed/complete_20250615_171248.csv"
-    data = pd.read_csv(data_path)
+    # Auto-detect and load the latest dataset
+    data_path = find_latest_data_file()
+    if not data_path:
+        raise FileNotFoundError("No data files found. Please check your data directory.")
+    
+    data = load_data_smart(data_path)
+    if data is None:
+        raise ValueError("Failed to load data file")
     
     print(f"📊 Dataset Overview:")
     print(f"   Total negotiations: {len(data):,}")
@@ -33,6 +98,10 @@ def load_and_analyze_complete_dataset():
     print(f"   Valid prices: {len(valid_prices):,} ({len(valid_prices)/len(successful)*100:.1f}%)")
     print(f"   Average price: ${valid_prices.mean():.2f} (optimal: $65)")
     print(f"   Buyer advantage: ${65 - valid_prices.mean():.2f}")
+    
+    # Store source file info for reporting
+    successful.attrs['source_file'] = data_path
+    successful.attrs['analysis_timestamp'] = datetime.now().isoformat()
     
     return data, successful, valid_prices
 
@@ -50,6 +119,9 @@ def analyze_reflection_patterns(data):
     }
     
     results = {}
+    
+    # Normalize reflection patterns
+    data['reflection_pattern'] = data['reflection_pattern'].astype(str).str.zfill(2)
     
     for pattern in ['00', '01', '10', '11']:
         pattern_data = data[data['reflection_pattern'] == pattern]
@@ -266,14 +338,14 @@ def generate_hypothesis_summary(reflection_results):
     print("📋 Research Hypotheses Status:")
     print("   H1 (Reflection Benefits): [Results above]")
     print("   H2 (Size-Efficiency): Analysis shows mixed results by model tier")
-    print("   H3 (Role Asymmetry): CONFIRMED - Massive buyer advantage ($15.60)")
+    print("   H3 (Role Asymmetry): CONFIRMED - Strong buyer advantage detected")
     print("   H4 (Model Synergy): [Results above]")
     
     print(f"\n💡 KEY RESEARCH CONTRIBUTIONS:")
     print(f"   🔍 Systematic buyer bias in LLM negotiations")
     print(f"   ⚡ Ultra-efficient AI negotiation protocols")
     print(f"   🎯 Model-specific performance patterns")
-    print(f"   📊 Large-scale empirical evidence (2,840 negotiations)")
+    print(f"   📊 Large-scale empirical evidence")
 
 def create_summary_visualizations(data):
     """Create key summary visualizations"""
@@ -286,6 +358,9 @@ def create_summary_visualizations(data):
     
     fig, axes = plt.subplots(2, 3, figsize=(18, 12))
     fig.suptitle('Newsvendor LLM Negotiation Experiment - Key Results', fontsize=16, fontweight='bold')
+    
+    # Normalize reflection patterns for consistency
+    data['reflection_pattern'] = data['reflection_pattern'].astype(str).str.zfill(2)
     
     # 1. Price distribution by reflection pattern
     ax1 = axes[0, 0]
@@ -352,16 +427,25 @@ def create_summary_visualizations(data):
     ax6.set_ylabel('Agreed Price ($)')
     
     plt.tight_layout()
-    viz_path = "./complete_analysis/comprehensive_results.png"
+    
+    # Save with timestamp and source info
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    viz_path = f"./comprehensive_results_{timestamp}.png"
     plt.savefig(viz_path, dpi=300, bbox_inches='tight')
-    print(f"   💾 Saved to: {viz_path}")
     plt.show()
+    
+    print(f"   💾 Saved to: {viz_path}")
 
 def main():
     """Run complete comprehensive analysis"""
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
     
-    # Load data
-    data, successful, valid_prices = load_and_analyze_complete_dataset()
+    # Load data with auto-detection
+    try:
+        data, successful, valid_prices = load_and_analyze_complete_dataset()
+    except (FileNotFoundError, ValueError) as e:
+        print(f"❌ {e}")
+        return
     
     # Run all analyses
     reflection_results = analyze_reflection_patterns(data)
@@ -373,12 +457,28 @@ def main():
     # Create visualizations
     create_summary_visualizations(data)
     
+    # Save comprehensive results
+    all_results = {
+        'analysis_timestamp': timestamp,
+        'source_file': data.attrs.get('source_file', 'unknown'),
+        'total_negotiations': len(data),
+        'successful_negotiations': len(successful),
+        'reflection_analysis': reflection_results,
+        'buyer_performance': buyer_perf,
+        'supplier_performance': supplier_perf
+    }
+    
+    results_path = f"./final_comprehensive_results_{timestamp}.json"
+    with open(results_path, 'w') as f:
+        json.dump(all_results, f, indent=2, default=str)
+    
     print(f"\n🎉 ANALYSIS COMPLETE!")
     print(f"="*30)
     print(f"📊 This represents one of the largest systematic studies of LLM negotiation behavior")
     print(f"🔬 Results provide strong empirical evidence for multiple research hypotheses")
     print(f"📈 Ready for academic publication and practical applications")
     print(f"🚀 Significant contribution to AI and supply chain literature!")
+    print(f"\n💾 Results saved to: {results_path}")
 
 if __name__ == '__main__':
     main()
