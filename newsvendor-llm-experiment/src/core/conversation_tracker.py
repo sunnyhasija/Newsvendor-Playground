@@ -12,9 +12,8 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 
-from ..parsing.acceptance_detector import AcceptanceDetector, TerminationType
-from ..parsing.price_extractor import RobustPriceExtractor
-
+from parsing.acceptance_detector import AcceptanceDetector, TerminationType
+from parsing.price_extractor import RobustPriceExtractor
 logger = logging.getLogger(__name__)
 
 

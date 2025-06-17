@@ -1,0 +1,504 @@
+2025-06-17 19:12:14,479 - __main__ - INFO - Initialized ValidationRunner for 10 models
+2025-06-17 19:12:14,479 - __main__ - INFO - Initializing unified model manager...
+2025-06-17 19:12:14,587 - core.unified_model_manager - INFO - ✅ Initialized AWS Bedrock client for Claude
+2025-06-17 19:12:14,587 - core.unified_model_manager - WARNING - Failed to initialize Azure client: No module named 'openai'
+2025-06-17 19:12:14,587 - core.unified_model_manager - INFO - Initialized UnifiedModelManager with 10 models
+2025-06-17 19:12:15,289 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:16,344 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:17,740 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:19,310 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:21,268 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:23,775 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:26,604 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:30,779 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:31,077 - core.unified_model_manager - ERROR - Generation failed for claude-sonnet-4-remote: An error occurred (ValidationException) when calling the InvokeModel operation: Invocation of model ID anthropic.claude-3-5-sonnet-20241022-v2:0 with on-demand throughput isn’t supported. Retry your request with the ID or ARN of an inference profile that contains this model.
+2025-06-17 19:12:31,078 - core.unified_model_manager - ERROR - Generation failed for o3-remote: Azure client not initialized
+2025-06-17 19:12:31,078 - __main__ - INFO - ✅ Working models: 8
+2025-06-17 19:12:31,078 - __main__ - INFO -    💻 tinyllama:latest
+2025-06-17 19:12:31,079 - __main__ - INFO -    💻 qwen2:1.5b
+2025-06-17 19:12:31,079 - __main__ - INFO -    💻 gemma2:2b
+2025-06-17 19:12:31,079 - __main__ - INFO -    💻 phi3:mini
+2025-06-17 19:12:31,080 - __main__ - INFO -    💻 llama3.2:latest
+2025-06-17 19:12:31,080 - __main__ - INFO -    💻 mistral:instruct
+2025-06-17 19:12:31,080 - __main__ - INFO -    💻 qwen:7b
+2025-06-17 19:12:31,081 - __main__ - INFO -    💻 qwen3:latest
+2025-06-17 19:12:31,081 - __main__ - WARNING - ❌ Failed models: ['claude-sonnet-4-remote', 'o3-remote']
+2025-06-17 19:12:31,081 - __main__ - INFO - Model manager initialized successfully
+2025-06-17 19:12:31,081 - __main__ - INFO - === VALIDATION PHASE ===
+2025-06-17 19:12:31,081 - __main__ - INFO - Testing all 10 models with 1 negotiation each
+2025-06-17 19:12:31,081 - __main__ - INFO - Running 10 validation negotiations...
+2025-06-17 19:12:31,081 - __main__ - INFO - 
+[1/10] Testing tinyllama:latest vs tinyllama:latest
+2025-06-17 19:12:31,081 - core.conversation_tracker - INFO - Initialized negotiation validation_01: tinyllama:latest vs tinyllama:latest
+2025-06-17 19:12:31,081 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:12:31,081 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:12:41,808 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:41,817 - core.conversation_tracker - INFO - Negotiation validation_01 terminated by acceptance at $40
+2025-06-17 19:12:41,817 - __main__ - INFO - ✅ SUCCESS: Agreed on $40 in 1 rounds
+2025-06-17 19:12:41,817 - __main__ - INFO -    Tokens: 1931, Cost: $0.000000
+2025-06-17 19:12:42,819 - __main__ - INFO - 
+[2/10] Testing qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:12:42,819 - core.conversation_tracker - INFO - Initialized negotiation validation_02: qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:12:42,819 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen2:1.5b, reflection=True
+2025-06-17 19:12:42,820 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:12:43,947 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:45,546 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:46,347 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:48,020 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:48,812 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:50,365 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:50,367 - core.conversation_tracker - INFO - Negotiation validation_02 terminated by acceptance at $58
+2025-06-17 19:12:50,368 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 6 rounds
+2025-06-17 19:12:50,368 - __main__ - INFO -    Tokens: 800, Cost: $0.000000
+2025-06-17 19:12:51,369 - __main__ - INFO - 
+[3/10] Testing gemma2:2b vs tinyllama:latest
+2025-06-17 19:12:51,370 - core.conversation_tracker - INFO - Initialized negotiation validation_03: gemma2:2b vs tinyllama:latest
+2025-06-17 19:12:51,370 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model gemma2:2b, reflection=True
+2025-06-17 19:12:51,371 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:12:52,554 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:53,851 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:53,853 - core.conversation_tracker - INFO - Negotiation validation_03 terminated by acceptance at $48
+2025-06-17 19:12:53,854 - __main__ - INFO - ✅ SUCCESS: Agreed on $48 in 2 rounds
+2025-06-17 19:12:53,854 - __main__ - INFO -    Tokens: 192, Cost: $0.000000
+2025-06-17 19:12:54,855 - __main__ - INFO - 
+[4/10] Testing phi3:mini vs tinyllama:latest
+2025-06-17 19:12:54,856 - core.conversation_tracker - INFO - Initialized negotiation validation_04: phi3:mini vs tinyllama:latest
+2025-06-17 19:12:54,856 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model phi3:mini, reflection=True
+2025-06-17 19:12:54,856 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:12:56,729 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:12:58,805 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:00,248 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:01,000 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:02,454 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:02,456 - core.conversation_tracker - INFO - Negotiation validation_04 terminated by acceptance at $47
+2025-06-17 19:13:02,456 - __main__ - INFO - ✅ SUCCESS: Agreed on $47 in 5 rounds
+2025-06-17 19:13:02,456 - __main__ - INFO -    Tokens: 485, Cost: $0.000000
+2025-06-17 19:13:03,458 - __main__ - INFO - 
+[5/10] Testing llama3.2:latest vs tinyllama:latest
+2025-06-17 19:13:03,458 - core.conversation_tracker - INFO - Initialized negotiation validation_05: llama3.2:latest vs tinyllama:latest
+2025-06-17 19:13:03,459 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model llama3.2:latest, reflection=True
+2025-06-17 19:13:03,459 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:13:03,808 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:05,242 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:05,244 - core.conversation_tracker - INFO - Negotiation validation_05 terminated by acceptance at $80
+2025-06-17 19:13:05,245 - __main__ - INFO - ✅ SUCCESS: Agreed on $80 in 2 rounds
+2025-06-17 19:13:05,245 - __main__ - INFO -    Tokens: 220, Cost: $0.000000
+2025-06-17 19:13:06,246 - __main__ - INFO - 
+[6/10] Testing mistral:instruct vs tinyllama:latest
+2025-06-17 19:13:06,247 - core.conversation_tracker - INFO - Initialized negotiation validation_06: mistral:instruct vs tinyllama:latest
+2025-06-17 19:13:06,247 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model mistral:instruct, reflection=True
+2025-06-17 19:13:06,248 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:13:06,827 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:08,070 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:08,073 - core.conversation_tracker - INFO - Negotiation validation_06 terminated by acceptance at $50
+2025-06-17 19:13:08,073 - __main__ - INFO - ✅ SUCCESS: Agreed on $50 in 2 rounds
+2025-06-17 19:13:08,073 - __main__ - INFO -    Tokens: 256, Cost: $0.000000
+2025-06-17 19:13:09,074 - __main__ - INFO - 
+[7/10] Testing qwen:7b vs tinyllama:latest
+2025-06-17 19:13:09,075 - core.conversation_tracker - INFO - Initialized negotiation validation_07: qwen:7b vs tinyllama:latest
+2025-06-17 19:13:09,075 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen:7b, reflection=True
+2025-06-17 19:13:09,075 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:13:12,279 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:13,704 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:15,680 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:17,281 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:19,533 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:19,535 - core.conversation_tracker - INFO - Negotiation validation_07 terminated by acceptance at $45
+2025-06-17 19:13:19,535 - __main__ - INFO - ✅ SUCCESS: Agreed on $45 in 5 rounds
+2025-06-17 19:13:19,535 - __main__ - INFO -    Tokens: 493, Cost: $0.000000
+2025-06-17 19:13:20,536 - __main__ - INFO - 
+[8/10] Testing qwen3:latest vs tinyllama:latest
+2025-06-17 19:13:20,537 - core.conversation_tracker - INFO - Initialized negotiation validation_08: qwen3:latest vs tinyllama:latest
+2025-06-17 19:13:20,537 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen3:latest, reflection=True
+2025-06-17 19:13:20,537 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:13:35,636 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:38,101 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:13:38,103 - core.conversation_tracker - INFO - Negotiation validation_08 terminated by convergence at $65
+2025-06-17 19:13:38,103 - __main__ - INFO - ✅ SUCCESS: Agreed on $65 in 2 rounds
+2025-06-17 19:13:38,103 - __main__ - INFO -    Tokens: 1016, Cost: $0.000000
+2025-06-17 19:13:39,105 - __main__ - INFO - 
+[9/10] Testing claude-sonnet-4-remote vs tinyllama:latest
+2025-06-17 19:13:39,105 - core.conversation_tracker - INFO - Initialized negotiation validation_09: claude-sonnet-4-remote vs tinyllama:latest
+2025-06-17 19:13:39,105 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model claude-sonnet-4-remote, reflection=True
+2025-06-17 19:13:39,106 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:13:39,213 - core.unified_model_manager - ERROR - Generation failed for claude-sonnet-4-remote: An error occurred (ValidationException) when calling the InvokeModel operation: Invocation of model ID anthropic.claude-3-5-sonnet-20241022-v2:0 with on-demand throughput isn’t supported. Retry your request with the ID or ARN of an inference profile that contains this model.
+2025-06-17 19:13:39,213 - agents.standardized_agents - ERROR - Buyer generation failed: Generation failed for claude-sonnet-4-remote: An error occurred (ValidationException) when calling the InvokeModel operation: Invocation of model ID anthropic.claude-3-5-sonnet-20241022-v2:0 with on-demand throughput isn’t supported. Retry your request with the ID or ARN of an inference profile that contains this model.
+2025-06-17 19:13:39,213 - __main__ - ERROR - Agent buyer failed to generate response: Generation failed for claude-sonnet-4-remote: An error occurred (ValidationException) when calling the InvokeModel operation: Invocation of model ID anthropic.claude-3-5-sonnet-20241022-v2:0 with on-demand throughput isn’t supported. Retry your request with the ID or ARN of an inference profile that contains this model.
+2025-06-17 19:13:39,213 - core.conversation_tracker - WARNING - Forced termination of validation_09: generation_failure
+2025-06-17 19:13:39,213 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 0 rounds
+2025-06-17 19:13:39,213 - __main__ - INFO -    Tokens: 0, Cost: $0.000000
+2025-06-17 19:13:40,214 - __main__ - INFO - 
+[10/10] Testing o3-remote vs tinyllama:latest
+2025-06-17 19:13:40,215 - core.conversation_tracker - INFO - Initialized negotiation validation_10: o3-remote vs tinyllama:latest
+2025-06-17 19:13:40,215 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model o3-remote, reflection=True
+2025-06-17 19:13:40,215 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:13:40,215 - core.unified_model_manager - ERROR - Generation failed for o3-remote: Azure client not initialized
+2025-06-17 19:13:40,215 - agents.standardized_agents - ERROR - Buyer generation failed: Generation failed for o3-remote: Azure client not initialized
+2025-06-17 19:13:40,216 - __main__ - ERROR - Agent buyer failed to generate response: Generation failed for o3-remote: Azure client not initialized
+2025-06-17 19:13:40,216 - core.conversation_tracker - WARNING - Forced termination of validation_10: generation_failure
+2025-06-17 19:13:40,216 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 0 rounds
+2025-06-17 19:13:40,216 - __main__ - INFO -    Tokens: 0, Cost: $0.000000
+2025-06-17 19:13:41,226 - __main__ - INFO - Validation results saved to:
+2025-06-17 19:13:41,227 - __main__ - INFO -   Results: validation_results_updated/validation_results_20250617_191341.json
+2025-06-17 19:13:41,227 - __main__ - INFO -   Conversations: validation_results_updated/validation_conversations_20250617_191341.txt
+2025-06-17 19:13:41,227 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
+2025-06-17 19:13:41,227 - core.unified_model_manager - INFO - Final stats: 33 generations, $0.0000 total cost
+2025-06-17 19:23:26,075 - __main__ - INFO - Initialized ValidationRunner for 10 models
+2025-06-17 19:23:26,075 - __main__ - INFO - Initializing unified model manager...
+2025-06-17 19:23:26,196 - core.unified_model_manager - INFO - ✅ Initialized AWS Bedrock client for Claude
+2025-06-17 19:23:26,196 - core.unified_model_manager - WARNING - Failed to initialize Azure client: No module named 'openai'
+2025-06-17 19:23:26,196 - core.unified_model_manager - INFO - Initialized UnifiedModelManager with 10 models
+2025-06-17 19:23:26,649 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:23:27,669 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:23:29,035 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:23:30,617 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:23:32,492 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:23:34,408 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:23:36,929 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
+2025-06-17 19:23:36,929 - core.unified_model_manager - INFO - Final stats: 6 generations, $0.0000 total cost
+2025-06-17 19:23:37,254 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:28,377 - __main__ - INFO - Initialized ValidationRunner for 10 models
+2025-06-17 19:24:28,377 - __main__ - INFO - Initializing unified model manager...
+2025-06-17 19:24:28,455 - core.unified_model_manager - INFO - ✅ Initialized AWS Bedrock client for Claude
+2025-06-17 19:24:28,812 - core.unified_model_manager - INFO - ✅ Initialized Azure OpenAI client for O3
+2025-06-17 19:24:28,812 - core.unified_model_manager - INFO - Initialized UnifiedModelManager with 10 models
+2025-06-17 19:24:29,606 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:30,674 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:32,062 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:33,729 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:34,426 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:34,685 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:36,783 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:41,277 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:45,863 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 400 Bad Request"
+2025-06-17 19:24:45,869 - core.unified_model_manager - ERROR - Generation failed for o3-remote: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0.5 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+2025-06-17 19:24:45,869 - __main__ - INFO - ✅ Working models: 9
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 tinyllama:latest
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 qwen2:1.5b
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 gemma2:2b
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 phi3:mini
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 llama3.2:latest
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 mistral:instruct
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 qwen:7b
+2025-06-17 19:24:45,869 - __main__ - INFO -    💻 qwen3:latest
+2025-06-17 19:24:45,870 - __main__ - INFO -    🌐 claude-sonnet-4-remote ($0.001950)
+2025-06-17 19:24:45,870 - __main__ - WARNING - ❌ Failed models: ['o3-remote']
+2025-06-17 19:24:45,870 - __main__ - INFO - Model manager initialized successfully
+2025-06-17 19:24:45,870 - __main__ - INFO - === VALIDATION PHASE ===
+2025-06-17 19:24:45,870 - __main__ - INFO - Testing all 10 models with 1 negotiation each
+2025-06-17 19:24:45,870 - __main__ - INFO - Running 10 validation negotiations...
+2025-06-17 19:24:45,870 - __main__ - INFO - 
+[1/10] Testing tinyllama:latest vs tinyllama:latest
+2025-06-17 19:24:45,870 - core.conversation_tracker - INFO - Initialized negotiation validation_01: tinyllama:latest vs tinyllama:latest
+2025-06-17 19:24:45,870 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:24:45,870 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:24:47,316 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:47,320 - core.conversation_tracker - INFO - Negotiation validation_01 terminated by acceptance at $45
+2025-06-17 19:24:47,321 - __main__ - INFO - ✅ SUCCESS: Agreed on $45 in 1 rounds
+2025-06-17 19:24:47,321 - __main__ - INFO -    Tokens: 184, Cost: $0.000000
+2025-06-17 19:24:48,323 - __main__ - INFO - 
+[2/10] Testing qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:24:48,323 - core.conversation_tracker - INFO - Initialized negotiation validation_02: qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:24:48,324 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen2:1.5b, reflection=True
+2025-06-17 19:24:48,324 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:24:49,461 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:50,926 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:50,928 - core.conversation_tracker - INFO - Negotiation validation_02 terminated by convergence at $40
+2025-06-17 19:24:50,928 - __main__ - INFO - ✅ SUCCESS: Agreed on $40 in 2 rounds
+2025-06-17 19:24:50,928 - __main__ - INFO -    Tokens: 236, Cost: $0.000000
+2025-06-17 19:24:51,930 - __main__ - INFO - 
+[3/10] Testing gemma2:2b vs tinyllama:latest
+2025-06-17 19:24:51,930 - core.conversation_tracker - INFO - Initialized negotiation validation_03: gemma2:2b vs tinyllama:latest
+2025-06-17 19:24:51,930 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model gemma2:2b, reflection=True
+2025-06-17 19:24:51,930 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:24:53,368 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:54,815 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:54,817 - core.conversation_tracker - INFO - Negotiation validation_03 terminated by convergence at $48
+2025-06-17 19:24:54,817 - __main__ - INFO - ✅ SUCCESS: Agreed on $48 in 2 rounds
+2025-06-17 19:24:54,817 - __main__ - INFO -    Tokens: 231, Cost: $0.000000
+2025-06-17 19:24:55,818 - __main__ - INFO - 
+[4/10] Testing phi3:mini vs tinyllama:latest
+2025-06-17 19:24:55,819 - core.conversation_tracker - INFO - Initialized negotiation validation_04: phi3:mini vs tinyllama:latest
+2025-06-17 19:24:55,819 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model phi3:mini, reflection=True
+2025-06-17 19:24:55,819 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:24:57,572 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:24:57,575 - core.conversation_tracker - INFO - Negotiation validation_04 terminated by acceptance at $38
+2025-06-17 19:24:57,575 - __main__ - INFO - ✅ SUCCESS: Agreed on $38 in 1 rounds
+2025-06-17 19:24:57,575 - __main__ - INFO -    Tokens: 40, Cost: $0.000000
+2025-06-17 19:24:58,576 - __main__ - INFO - 
+[5/10] Testing llama3.2:latest vs tinyllama:latest
+2025-06-17 19:24:58,577 - core.conversation_tracker - INFO - Initialized negotiation validation_05: llama3.2:latest vs tinyllama:latest
+2025-06-17 19:24:58,577 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model llama3.2:latest, reflection=True
+2025-06-17 19:24:58,577 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:24:58,902 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:00,820 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:00,824 - core.conversation_tracker - INFO - Negotiation validation_05 terminated by acceptance at $58
+2025-06-17 19:25:00,824 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 2 rounds
+2025-06-17 19:25:00,824 - __main__ - INFO -    Tokens: 326, Cost: $0.000000
+2025-06-17 19:25:01,825 - __main__ - INFO - 
+[6/10] Testing mistral:instruct vs tinyllama:latest
+2025-06-17 19:25:01,826 - core.conversation_tracker - INFO - Initialized negotiation validation_06: mistral:instruct vs tinyllama:latest
+2025-06-17 19:25:01,826 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model mistral:instruct, reflection=True
+2025-06-17 19:25:01,826 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:25:02,406 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:03,516 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:04,438 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:05,388 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:06,148 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:06,150 - core.conversation_tracker - INFO - Negotiation validation_06 terminated by convergence at $59
+2025-06-17 19:25:06,150 - __main__ - INFO - ✅ SUCCESS: Agreed on $59 in 5 rounds
+2025-06-17 19:25:06,150 - __main__ - INFO -    Tokens: 425, Cost: $0.000000
+2025-06-17 19:25:07,151 - __main__ - INFO - 
+[7/10] Testing qwen:7b vs tinyllama:latest
+2025-06-17 19:25:07,152 - core.conversation_tracker - INFO - Initialized negotiation validation_07: qwen:7b vs tinyllama:latest
+2025-06-17 19:25:07,152 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen:7b, reflection=True
+2025-06-17 19:25:07,152 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:25:10,295 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:12,126 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:12,128 - core.conversation_tracker - INFO - Negotiation validation_07 terminated by convergence at $38
+2025-06-17 19:25:12,128 - __main__ - INFO - ✅ SUCCESS: Agreed on $38 in 2 rounds
+2025-06-17 19:25:12,128 - __main__ - INFO -    Tokens: 319, Cost: $0.000000
+2025-06-17 19:25:13,130 - __main__ - INFO - 
+[8/10] Testing qwen3:latest vs tinyllama:latest
+2025-06-17 19:25:13,130 - core.conversation_tracker - INFO - Initialized negotiation validation_08: qwen3:latest vs tinyllama:latest
+2025-06-17 19:25:13,131 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen3:latest, reflection=True
+2025-06-17 19:25:13,132 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:25:30,770 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:36,772 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:36,776 - core.conversation_tracker - INFO - Negotiation validation_08 terminated by convergence at $60
+2025-06-17 19:25:36,776 - __main__ - INFO - ✅ SUCCESS: Agreed on $60 in 2 rounds
+2025-06-17 19:25:36,776 - __main__ - INFO -    Tokens: 1775, Cost: $0.000000
+2025-06-17 19:25:37,778 - __main__ - INFO - 
+[9/10] Testing claude-sonnet-4-remote vs tinyllama:latest
+2025-06-17 19:25:37,778 - core.conversation_tracker - INFO - Initialized negotiation validation_09: claude-sonnet-4-remote vs tinyllama:latest
+2025-06-17 19:25:37,778 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model claude-sonnet-4-remote, reflection=True
+2025-06-17 19:25:37,779 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:25:39,490 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:42,538 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:25:42,539 - core.conversation_tracker - INFO - Negotiation validation_09 terminated by convergence at $35
+2025-06-17 19:25:42,539 - __main__ - INFO - ✅ SUCCESS: Agreed on $35 in 4 rounds
+2025-06-17 19:25:42,539 - __main__ - INFO -    Tokens: 979, Cost: $0.044700
+2025-06-17 19:25:43,541 - __main__ - INFO - 
+[10/10] Testing o3-remote vs tinyllama:latest
+2025-06-17 19:25:43,541 - core.conversation_tracker - INFO - Initialized negotiation validation_10: o3-remote vs tinyllama:latest
+2025-06-17 19:25:43,541 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model o3-remote, reflection=True
+2025-06-17 19:25:43,541 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:25:43,843 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 400 Bad Request"
+2025-06-17 19:25:43,845 - core.unified_model_manager - ERROR - Generation failed for o3-remote: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0.5 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+2025-06-17 19:25:43,845 - agents.standardized_agents - ERROR - Buyer generation failed: Generation failed for o3-remote: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0.5 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+2025-06-17 19:25:43,845 - __main__ - ERROR - Agent buyer failed to generate response: Generation failed for o3-remote: Error code: 400 - {'error': {'message': "Unsupported value: 'temperature' does not support 0.5 with this model. Only the default (1) value is supported.", 'type': 'invalid_request_error', 'param': 'temperature', 'code': 'unsupported_value'}}
+2025-06-17 19:25:43,845 - core.conversation_tracker - WARNING - Forced termination of validation_10: generation_failure
+2025-06-17 19:25:43,846 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 0 rounds
+2025-06-17 19:25:43,846 - __main__ - INFO -    Tokens: 0, Cost: $0.000000
+2025-06-17 19:25:44,852 - __main__ - INFO - Validation results saved to:
+2025-06-17 19:25:44,852 - __main__ - INFO -   Results: validation_results_updated/validation_results_20250617_192544.json
+2025-06-17 19:25:44,852 - __main__ - INFO -   Conversations: validation_results_updated/validation_conversations_20250617_192544.txt
+2025-06-17 19:25:44,853 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
+2025-06-17 19:25:44,853 - core.unified_model_manager - INFO - Final stats: 30 generations, $0.0466 total cost
+2025-06-17 19:29:21,221 - __main__ - INFO - Initialized ValidationRunner for 10 models
+2025-06-17 19:29:21,221 - __main__ - INFO - Initializing unified model manager...
+2025-06-17 19:29:21,319 - core.unified_model_manager - INFO - ✅ Initialized AWS Bedrock client for Claude
+2025-06-17 19:29:21,461 - core.unified_model_manager - INFO - ✅ Initialized Azure OpenAI client for O3
+2025-06-17 19:29:21,461 - core.unified_model_manager - INFO - Initialized UnifiedModelManager with 10 models
+2025-06-17 19:29:21,586 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:22,625 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:24,034 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:25,601 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:25,896 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:26,191 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:29,299 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:33,544 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:36,944 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 400 Bad Request"
+2025-06-17 19:29:36,947 - core.unified_model_manager - ERROR - Generation failed for o3-remote: Error code: 400 - {'error': {'message': 'Could not finish the message because max_tokens or model output limit was reached. Please try again with higher max_tokens.', 'type': 'invalid_request_error', 'param': None, 'code': None}}
+2025-06-17 19:29:36,948 - __main__ - INFO - ✅ Working models: 9
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 tinyllama:latest
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 qwen2:1.5b
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 gemma2:2b
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 phi3:mini
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 llama3.2:latest
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 mistral:instruct
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 qwen:7b
+2025-06-17 19:29:36,948 - __main__ - INFO -    💻 qwen3:latest
+2025-06-17 19:29:36,949 - __main__ - INFO -    🌐 claude-sonnet-4-remote ($0.001950)
+2025-06-17 19:29:36,949 - __main__ - WARNING - ❌ Failed models: ['o3-remote']
+2025-06-17 19:29:36,949 - __main__ - INFO - Model manager initialized successfully
+2025-06-17 19:29:36,949 - __main__ - INFO - === VALIDATION PHASE ===
+2025-06-17 19:29:36,949 - __main__ - INFO - Testing all 10 models with 1 negotiation each
+2025-06-17 19:29:36,949 - __main__ - INFO - Running 10 validation negotiations...
+2025-06-17 19:29:36,949 - __main__ - INFO - 
+[1/10] Testing tinyllama:latest vs tinyllama:latest
+2025-06-17 19:29:36,949 - core.conversation_tracker - INFO - Initialized negotiation validation_01: tinyllama:latest vs tinyllama:latest
+2025-06-17 19:29:36,950 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:29:36,950 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:29:38,322 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:39,606 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:40,817 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:41,828 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:41,830 - core.conversation_tracker - INFO - Negotiation validation_01 terminated by convergence at $45
+2025-06-17 19:29:41,831 - __main__ - INFO - ✅ SUCCESS: Agreed on $45 in 4 rounds
+2025-06-17 19:29:41,831 - __main__ - INFO -    Tokens: 804, Cost: $0.000000
+2025-06-17 19:29:42,831 - __main__ - INFO - 
+[2/10] Testing qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:29:42,832 - core.conversation_tracker - INFO - Initialized negotiation validation_02: qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:29:42,832 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen2:1.5b, reflection=True
+2025-06-17 19:29:42,832 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:29:43,995 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:45,352 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:46,077 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:47,443 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:29:47,446 - core.conversation_tracker - INFO - Negotiation validation_02 terminated by acceptance at $65
+2025-06-17 19:29:47,447 - __main__ - INFO - ✅ SUCCESS: Agreed on $65 in 4 rounds
+2025-06-17 19:29:47,447 - __main__ - INFO -    Tokens: 420, Cost: $0.000000
+2025-06-17 19:29:48,448 - __main__ - INFO - 
+[3/10] Testing gemma2:2b vs tinyllama:latest
+2025-06-17 19:29:48,449 - core.conversation_tracker - INFO - Initialized negotiation validation_03: gemma2:2b vs tinyllama:latest
+2025-06-17 19:29:48,449 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model gemma2:2b, reflection=True
+2025-06-17 19:29:48,449 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:29:49,327 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
+2025-06-17 19:29:49,328 - core.unified_model_manager - INFO - Final stats: 17 generations, $0.0019 total cost
+2025-06-17 19:29:49,918 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:09,191 - __main__ - INFO - Initialized ValidationRunner for 10 models
+2025-06-17 19:30:09,191 - __main__ - INFO - Initializing unified model manager...
+2025-06-17 19:30:09,286 - core.unified_model_manager - INFO - ✅ Initialized AWS Bedrock client for Claude
+2025-06-17 19:30:09,420 - core.unified_model_manager - INFO - ✅ Initialized Azure OpenAI client for O3
+2025-06-17 19:30:09,420 - core.unified_model_manager - INFO - Initialized UnifiedModelManager with 10 models
+2025-06-17 19:30:09,897 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:10,663 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:11,603 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:12,649 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:13,015 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:13,254 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:16,056 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:20,250 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:23,538 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-06-17 19:30:23,547 - __main__ - INFO - ✅ Working models: 10
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 tinyllama:latest
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 qwen2:1.5b
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 gemma2:2b
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 phi3:mini
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 llama3.2:latest
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 mistral:instruct
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 qwen:7b
+2025-06-17 19:30:23,547 - __main__ - INFO -    💻 qwen3:latest
+2025-06-17 19:30:23,547 - __main__ - INFO -    🌐 claude-sonnet-4-remote ($0.001950)
+2025-06-17 19:30:23,547 - __main__ - INFO -    🌐 o3-remote ($0.005520)
+2025-06-17 19:30:23,547 - __main__ - INFO - Model manager initialized successfully
+2025-06-17 19:30:23,547 - __main__ - INFO - === VALIDATION PHASE ===
+2025-06-17 19:30:23,547 - __main__ - INFO - Testing all 10 models with 1 negotiation each
+2025-06-17 19:30:23,547 - __main__ - INFO - Running 10 validation negotiations...
+2025-06-17 19:30:23,547 - __main__ - INFO - 
+[1/10] Testing tinyllama:latest vs tinyllama:latest
+2025-06-17 19:30:23,548 - core.conversation_tracker - INFO - Initialized negotiation validation_01: tinyllama:latest vs tinyllama:latest
+2025-06-17 19:30:23,548 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:23,548 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:25,152 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:26,228 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:27,061 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:28,695 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:28,698 - core.conversation_tracker - INFO - Negotiation validation_01 terminated by convergence at $45
+2025-06-17 19:30:28,698 - __main__ - INFO - ✅ SUCCESS: Agreed on $45 in 4 rounds
+2025-06-17 19:30:28,698 - __main__ - INFO -    Tokens: 889, Cost: $0.000000
+2025-06-17 19:30:29,699 - __main__ - INFO - 
+[2/10] Testing qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:30:29,700 - core.conversation_tracker - INFO - Initialized negotiation validation_02: qwen2:1.5b vs tinyllama:latest
+2025-06-17 19:30:29,700 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen2:1.5b, reflection=True
+2025-06-17 19:30:29,700 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:30,811 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:32,095 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:32,868 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:34,044 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:34,810 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:34,812 - core.conversation_tracker - INFO - Negotiation validation_02 terminated by convergence at $58
+2025-06-17 19:30:34,812 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 5 rounds
+2025-06-17 19:30:34,812 - __main__ - INFO -    Tokens: 363, Cost: $0.000000
+2025-06-17 19:30:35,814 - __main__ - INFO - 
+[3/10] Testing gemma2:2b vs tinyllama:latest
+2025-06-17 19:30:35,814 - core.conversation_tracker - INFO - Initialized negotiation validation_03: gemma2:2b vs tinyllama:latest
+2025-06-17 19:30:35,815 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model gemma2:2b, reflection=True
+2025-06-17 19:30:35,815 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:37,328 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:38,629 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:39,793 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:39,794 - core.conversation_tracker - INFO - Negotiation validation_03 terminated by convergence at $58
+2025-06-17 19:30:39,794 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 3 rounds
+2025-06-17 19:30:39,795 - __main__ - INFO -    Tokens: 199, Cost: $0.000000
+2025-06-17 19:30:40,796 - __main__ - INFO - 
+[4/10] Testing phi3:mini vs tinyllama:latest
+2025-06-17 19:30:40,796 - core.conversation_tracker - INFO - Initialized negotiation validation_04: phi3:mini vs tinyllama:latest
+2025-06-17 19:30:40,796 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model phi3:mini, reflection=True
+2025-06-17 19:30:40,796 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:42,346 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:43,892 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:43,894 - core.conversation_tracker - INFO - Negotiation validation_04 terminated by acceptance at $None
+2025-06-17 19:30:43,894 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 2 rounds
+2025-06-17 19:30:43,894 - __main__ - INFO -    Tokens: 179, Cost: $0.000000
+2025-06-17 19:30:44,896 - __main__ - INFO - 
+[5/10] Testing llama3.2:latest vs tinyllama:latest
+2025-06-17 19:30:44,896 - core.conversation_tracker - INFO - Initialized negotiation validation_05: llama3.2:latest vs tinyllama:latest
+2025-06-17 19:30:44,897 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model llama3.2:latest, reflection=True
+2025-06-17 19:30:44,897 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:45,192 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:46,760 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:47,293 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:47,295 - core.conversation_tracker - INFO - Negotiation validation_05 terminated by acceptance at $38
+2025-06-17 19:30:47,295 - __main__ - INFO - ✅ SUCCESS: Agreed on $38 in 3 rounds
+2025-06-17 19:30:47,295 - __main__ - INFO -    Tokens: 342, Cost: $0.000000
+2025-06-17 19:30:48,297 - __main__ - INFO - 
+[6/10] Testing mistral:instruct vs tinyllama:latest
+2025-06-17 19:30:48,297 - core.conversation_tracker - INFO - Initialized negotiation validation_06: mistral:instruct vs tinyllama:latest
+2025-06-17 19:30:48,297 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model mistral:instruct, reflection=True
+2025-06-17 19:30:48,298 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:48,874 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:50,615 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:51,684 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:52,361 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:53,115 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:53,117 - core.conversation_tracker - INFO - Negotiation validation_06 terminated by acceptance at $65
+2025-06-17 19:30:53,117 - __main__ - INFO - ✅ SUCCESS: Agreed on $65 in 5 rounds
+2025-06-17 19:30:53,118 - __main__ - INFO -    Tokens: 501, Cost: $0.000000
+2025-06-17 19:30:54,119 - __main__ - INFO - 
+[7/10] Testing qwen:7b vs tinyllama:latest
+2025-06-17 19:30:54,121 - core.conversation_tracker - INFO - Initialized negotiation validation_07: qwen:7b vs tinyllama:latest
+2025-06-17 19:30:54,121 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen:7b, reflection=True
+2025-06-17 19:30:54,121 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:30:57,235 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:58,640 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:30:58,642 - core.conversation_tracker - INFO - Negotiation validation_07 terminated by acceptance at $40
+2025-06-17 19:30:58,643 - __main__ - INFO - ✅ SUCCESS: Agreed on $40 in 2 rounds
+2025-06-17 19:30:58,643 - __main__ - INFO -    Tokens: 213, Cost: $0.000000
+2025-06-17 19:30:59,644 - __main__ - INFO - 
+[8/10] Testing qwen3:latest vs tinyllama:latest
+2025-06-17 19:30:59,645 - core.conversation_tracker - INFO - Initialized negotiation validation_08: qwen3:latest vs tinyllama:latest
+2025-06-17 19:30:59,645 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen3:latest, reflection=True
+2025-06-17 19:30:59,645 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:31:18,102 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:31:24,107 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:31:24,111 - core.conversation_tracker - INFO - Negotiation validation_08 terminated by convergence at $60
+2025-06-17 19:31:24,111 - __main__ - INFO - ✅ SUCCESS: Agreed on $60 in 2 rounds
+2025-06-17 19:31:24,111 - __main__ - INFO -    Tokens: 1814, Cost: $0.000000
+2025-06-17 19:31:25,112 - __main__ - INFO - 
+[9/10] Testing claude-sonnet-4-remote vs tinyllama:latest
+2025-06-17 19:31:25,113 - core.conversation_tracker - INFO - Initialized negotiation validation_09: claude-sonnet-4-remote vs tinyllama:latest
+2025-06-17 19:31:25,113 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model claude-sonnet-4-remote, reflection=True
+2025-06-17 19:31:25,113 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:31:27,366 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:31:27,369 - core.conversation_tracker - INFO - Negotiation validation_09 terminated by acceptance at $58
+2025-06-17 19:31:27,369 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 2 rounds
+2025-06-17 19:31:27,369 - __main__ - INFO -    Tokens: 507, Cost: $0.019875
+2025-06-17 19:31:28,371 - __main__ - INFO - 
+[10/10] Testing o3-remote vs tinyllama:latest
+2025-06-17 19:31:28,371 - core.conversation_tracker - INFO - Initialized negotiation validation_10: o3-remote vs tinyllama:latest
+2025-06-17 19:31:28,371 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model o3-remote, reflection=True
+2025-06-17 19:31:28,372 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 19:31:31,632 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-06-17 19:31:32,620 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:31:45,148 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-06-17 19:31:46,392 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 19:31:46,394 - core.conversation_tracker - INFO - Negotiation validation_10 terminated by acceptance at $58
+2025-06-17 19:31:46,395 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 4 rounds
+2025-06-17 19:31:46,395 - __main__ - INFO -    Tokens: 1390, Cost: $0.226080
+2025-06-17 19:31:47,405 - __main__ - INFO - Validation results saved to:
+2025-06-17 19:31:47,405 - __main__ - INFO -   Results: validation_results_updated/validation_results_20250617_193147.json
+2025-06-17 19:31:47,405 - __main__ - INFO -   Conversations: validation_results_updated/validation_conversations_20250617_193147.txt
+2025-06-17 19:31:47,405 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
+2025-06-17 19:31:47,405 - core.unified_model_manager - INFO - Final stats: 42 generations, $0.2534 total cost

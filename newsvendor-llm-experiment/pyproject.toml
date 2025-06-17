@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "newsvendor-llm-experiment"
-version = "0.5.0"
-description = "LLM Agent Newsvendor Negotiation Experiment"
+version = "0.6.0"  # Bumped version for remote model support
+description = "LLM Agent Newsvendor Negotiation Experiment with Remote Models"
 authors = ["Your Name <your.email@example.com>"]
 readme = "README.md"
 packages = [{include = "src"}]
@@ -28,6 +28,11 @@ pytest-asyncio = "^0.21.0"
 psutil = "^5.9.0"
 statsmodels = "^0.14.4"
 kaleido = "0.2.1"
+# Remote model dependencies
+boto3 = "^1.34.0"          # AWS Bedrock for Claude
+aiohttp = "^3.9.0"         # Async HTTP for Azure APIs
+python-dotenv = "^1.0.0"   # Environment variable management
+openai = "^1.88.0"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
@@ -43,7 +48,9 @@ newsvendor-validate = "src.experiments.run_validation_suite:main"
 newsvendor-analyze = "src.experiments.analyze_results:main"
 newsvendor-debug = "src.utils.debug_data:debug_data"
 newsvendor-safe-analyze = "src.analysis.safe_analysis_runner:main"
-
+# New scripts for remote models
+newsvendor-setup-remote = "src.core.simple_remote_client:main"
+newsvendor-test-remote = "src.core.simple_remote_client:test_main"
 
 [build-system]
 requires = ["poetry-core"]

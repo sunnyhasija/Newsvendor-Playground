@@ -3,16 +3,22 @@ Negotiation Engine for Newsvendor Experiment
 
 Orchestrates negotiations between buyer and supplier agents,
 manages conversation flow, and ensures proper experimental protocol.
+Now supports both local and remote models.
 """
 
 import asyncio
 import uuid
 import logging
 from typing import Dict, Any, Optional, Tuple, List
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 import time
 
-from .model_manager import OptimizedModelManager
+# Import unified model manager for remote model support
+try:
+    from .unified_model_manager_simple import UnifiedModelManager as OptimizedModelManager
+except ImportError:
+    from .model_manager import OptimizedModelManager, GenerationResponse
+
 from .conversation_tracker import ConversationTracker, NegotiationResult
 from ..agents.buyer_agent import BuyerAgent
 from ..agents.supplier_agent import SupplierAgent
@@ -33,9 +39,10 @@ class NegotiationConfig:
 
 
 def get_replication_count(buyer_model: str, supplier_model: str) -> int:
-    """Determine replications based on computational cost."""
+    """Determine replications based on computational cost and API costs."""
     
     MODEL_TIERS = {
+        # Local models (existing)
         'tinyllama:latest': 'ultra',
         'qwen2:1.5b': 'ultra',
         'gemma2:2b': 'compact',
@@ -43,11 +50,16 @@ def get_replication_count(buyer_model: str, supplier_model: str) -> int:
         'llama3.2:latest': 'compact',
         'mistral:instruct': 'mid',
         'qwen:7b': 'mid',
-        'qwen3:latest': 'large'
+        'qwen3:latest': 'large',
+        
+        # Remote models (new) - fewer reps due to cost
+        'claude-sonnet-4-remote': 'premium',
+        'o3-remote': 'premium'
     }
     
-    # UPDATED: New replication matrix (50-40-30-20)
+    # Updated replication matrix with cost considerations
     REPLICATION_MATRIX = {
+        # Existing combinations (unchanged)
         ('ultra', 'ultra'): 50,
         ('compact', 'ultra'): 40,
         ('large', 'ultra'): 20,
@@ -57,7 +69,20 @@ def get_replication_count(buyer_model: str, supplier_model: str) -> int:
         ('compact', 'mid'): 30,
         ('mid', 'mid'): 30,
         ('large', 'mid'): 20,
-        ('large', 'large'): 20
+        ('large', 'large'): 20,
+        
+        # Remote model combinations (reduced due to cost)
+        ('premium', 'ultra'): 3,     # Premium vs local - very few reps
+        ('premium', 'compact'): 3,
+        ('premium', 'mid'): 2,
+        ('premium', 'large'): 2,
+        ('premium', 'premium'): 1,   # Both premium models - single test
+        
+        # Mixed remote combinations  
+        ('large', 'premium'): 2,
+        ('mid', 'premium'): 2,
+        ('compact', 'premium'): 3,
+        ('ultra', 'premium'): 3,
     }
     
     buyer_tier = MODEL_TIERS.get(buyer_model, 'mid')
@@ -66,7 +91,7 @@ def get_replication_count(buyer_model: str, supplier_model: str) -> int:
     # Always sort for consistent lookup
     key = tuple(sorted([buyer_tier, supplier_tier]))
     
-    return REPLICATION_MATRIX.get(key, 30)  # Default to 30 reps
+    return REPLICATION_MATRIX.get(key, 10)  # Default to 10 reps
 
 
 class NegotiationEngine:
@@ -77,7 +102,7 @@ class NegotiationEngine:
         Initialize negotiation engine.
         
         Args:
-            model_manager: Model manager for LLM operations
+            model_manager: Model manager instance (now supports remote models)
             config: Configuration dictionary
         """
         self.model_manager = model_manager
@@ -100,8 +125,13 @@ class NegotiationEngine:
         self.successful_negotiations = 0
         self.failed_negotiations = 0
         
-        logger.info("Initialized NegotiationEngine with corrected game parameters")
+        # NEW: Cost tracking for remote models
+        self.total_api_cost = 0.0
+        self.cost_limit = self.config.get('cost_limit', 50.0)  # $50 default limit
+        
+        logger.info("Initialized NegotiationEngine with remote model support")
         logger.info(f"Game config: {self.game_config}")
+        logger.info(f"Cost limit: ${self.cost_limit}")
     
     async def run_single_negotiation(
         self, 
@@ -114,8 +144,8 @@ class NegotiationEngine:
         Run a single negotiation between two models.
         
         Args:
-            buyer_model: Name of buyer's LLM model
-            supplier_model: Name of supplier's LLM model  
+            buyer_model: Name of buyer's LLM model (local or remote)
+            supplier_model: Name of supplier's LLM model (local or remote)
             reflection_pattern: "00", "01", "10", "11" (buyer reflection, supplier reflection)
             negotiation_id: Optional custom ID for negotiation
             
@@ -126,6 +156,13 @@ class NegotiationEngine:
             negotiation_id = f"neg_{uuid.uuid4().hex[:8]}"
         
         logger.info(f"Starting negotiation {negotiation_id}: {buyer_model} vs {supplier_model} ({reflection_pattern})")
+        
+        # Check cost limit before starting
+        current_cost = getattr(self.model_manager, 'get_total_cost', lambda: 0.0)()
+        if current_cost >= self.cost_limit:
+            logger.warning(f"Cost limit exceeded (${current_cost:.2f}). Skipping negotiation.")
+            return self._create_failed_result(negotiation_id, buyer_model, supplier_model, 
+                                            reflection_pattern, "Cost limit exceeded")
         
         try:
             # Parse reflection pattern
@@ -166,6 +203,15 @@ class NegotiationEngine:
             else:
                 self.failed_negotiations += 1
             
+            # Update cost tracking
+            if hasattr(self.model_manager, 'get_total_cost'):
+                new_cost = self.model_manager.get_total_cost()
+                cost_for_this_negotiation = new_cost - self.total_api_cost
+                self.total_api_cost = new_cost
+                
+                if cost_for_this_negotiation > 0:
+                    logger.info(f"Negotiation cost: ${cost_for_this_negotiation:.4f}, Total: ${self.total_api_cost:.4f}")
+            
             logger.info(f"Completed negotiation {negotiation_id}: "
                        f"{'SUCCESS' if result.completed else 'FAILED'}, "
                        f"price=${result.agreed_price}, rounds={result.total_rounds}")
@@ -178,23 +224,29 @@ class NegotiationEngine:
             self.failed_negotiations += 1
             
             # Return failed result
-            return NegotiationResult(
-                negotiation_id=negotiation_id,
-                buyer_model=buyer_model,
-                supplier_model=supplier_model,
-                reflection_pattern=reflection_pattern,
-                completed=False,
-                agreed_price=None,
-                termination_type=TerminationType.FAILURE,
-                total_rounds=0,
-                total_tokens=0,
-                total_time=0.0,
-                buyer_profit=None,
-                supplier_profit=None,
-                distance_from_optimal=None,
-                turns=[],
-                metadata={"error": str(e)}
-            )
+            return self._create_failed_result(negotiation_id, buyer_model, supplier_model, 
+                                            reflection_pattern, str(e))
+    
+    def _create_failed_result(self, negotiation_id: str, buyer_model: str, supplier_model: str, 
+                            reflection_pattern: str, error_reason: str) -> NegotiationResult:
+        """Create a failed negotiation result."""
+        return NegotiationResult(
+            negotiation_id=negotiation_id,
+            buyer_model=buyer_model,
+            supplier_model=supplier_model,
+            reflection_pattern=reflection_pattern,
+            completed=False,
+            agreed_price=None,
+            termination_type=TerminationType.FAILURE,
+            total_rounds=0,
+            total_tokens=0,
+            total_time=0.0,
+            buyer_profit=None,
+            supplier_profit=None,
+            distance_from_optimal=None,
+            turns=[],
+            metadata={"error": error_reason}
+        )
     
     async def _conduct_negotiation(
         self, 
@@ -329,22 +381,9 @@ class NegotiationEngine:
                 logger.error(f"Negotiation {i} failed with exception: {result}")
                 # Create a failed result
                 config = negotiations[i]
-                failed_result = NegotiationResult(
-                    negotiation_id=f"failed_{i}",
-                    buyer_model=config.buyer_model,
-                    supplier_model=config.supplier_model,
-                    reflection_pattern=config.reflection_pattern,
-                    completed=False,
-                    agreed_price=None,
-                    termination_type=TerminationType.FAILURE,
-                    total_rounds=0,
-                    total_tokens=0,
-                    total_time=0.0,
-                    buyer_profit=None,
-                    supplier_profit=None,
-                    distance_from_optimal=None,
-                    turns=[],
-                    metadata={"error": str(result)}
+                failed_result = self._create_failed_result(
+                    f"failed_{i}", config.buyer_model, config.supplier_model,
+                    config.reflection_pattern, str(result)
                 )
                 final_results.append(failed_result)
             else:
@@ -404,7 +443,8 @@ class NegotiationEngine:
             "model_validation": {},
             "system_resources": {},
             "test_negotiations": {},
-            "recommendations": []
+            "recommendations": [],
+            "cost_estimates": {}
         }
         
         try:
@@ -424,6 +464,25 @@ class NegotiationEngine:
                 "memory_adequate": memory_gb >= 16,
                 "cpu_adequate": cpu_count >= 4
             }
+            
+            # Cost estimates for remote models
+            if hasattr(self.model_manager, 'get_model_details'):
+                model_details = self.model_manager.get_model_details()
+                remote_models = [m for m in models if model_details.get(m, {}).get('type') == 'remote']
+                
+                if remote_models:
+                    cost_estimates = {}
+                    for model in remote_models:
+                        details = model_details.get(model, {})
+                        cost_per_token = details.get('cost_per_token', 0)
+                        # Estimate ~100 tokens per negotiation
+                        estimated_cost_per_negotiation = cost_per_token * 100
+                        cost_estimates[model] = {
+                            'cost_per_token': cost_per_token,
+                            'estimated_cost_per_negotiation': estimated_cost_per_negotiation
+                        }
+                    
+                    validation_results["cost_estimates"] = cost_estimates
             
             # Test basic negotiation functionality
             if any(result["success"] for result in model_validation.values()):
@@ -457,14 +516,14 @@ class NegotiationEngine:
             # Determine overall status
             working_model_count = sum(1 for result in model_validation.values() if result["success"])
             
-            if working_model_count >= 2:  # Fixed: Need at least 2 models, not 6
+            if working_model_count >= 2:  # Need at least 2 models
                 validation_results["overall_status"] = "ready"
             elif working_model_count >= 1:  # Some models working
                 validation_results["overall_status"] = "partial"
                 validation_results["recommendations"].append("Some models failed validation - experiment will run with reduced model set")
             else:  # No models working
                 validation_results["overall_status"] = "failed"
-                validation_results["recommendations"].append("No working models available - check Ollama installation and model availability")
+                validation_results["recommendations"].append("No working models available - check model installation and API credentials")
             
             # Resource recommendations
             if not validation_results["system_resources"]["memory_adequate"]:
@@ -473,6 +532,15 @@ class NegotiationEngine:
             if not validation_results["system_resources"]["cpu_adequate"]:
                 validation_results["recommendations"].append("Limited CPU cores - experiment may run slowly")
             
+            # Cost recommendations
+            if validation_results.get("cost_estimates"):
+                total_estimated_cost = sum(
+                    est["estimated_cost_per_negotiation"] * 10  # Assume 10 negotiations per model
+                    for est in validation_results["cost_estimates"].values()
+                )
+                if total_estimated_cost > 10.0:  # > $10
+                    validation_results["recommendations"].append(f"High estimated API costs (${total_estimated_cost:.2f}) - consider reducing remote model usage")
+        
         except Exception as e:
             logger.error(f"Validation failed: {e}")
             validation_results["overall_status"] = "error"
@@ -482,17 +550,17 @@ class NegotiationEngine:
     
     def get_performance_stats(self) -> Dict[str, Any]:
         """Get performance statistics for the negotiation engine."""
-        return {
+        stats = {
             "total_negotiations": self.total_negotiations,
             "successful_negotiations": self.successful_negotiations,
             "failed_negotiations": self.failed_negotiations,
             "success_rate": (
                 self.successful_negotiations / max(self.total_negotiations, 1)
             ),
-            "model_manager_stats": self.model_manager.get_model_stats(),
+            "total_api_cost": self.total_api_cost,
+            "cost_limit": self.cost_limit,
+            "cost_utilization": self.total_api_cost / self.cost_limit if self.cost_limit > 0 else 0,
+            "model_manager_stats": getattr(self.model_manager, 'get_model_stats', lambda: {})(),
             "game_config": self.game_config
         }
-
-
-# Add missing import for asdict
-from dataclasses import asdict
+        return stats
