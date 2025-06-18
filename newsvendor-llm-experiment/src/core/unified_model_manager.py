@@ -2,7 +2,7 @@
 """
 src/core/unified_model_manager.py
 Unified Model Manager for Newsvendor Experiment - integrates with existing architecture
-Handles both local Ollama models and remote models (Claude, O3) with standardized interface
+Handles both local Ollama models and remote models (Claude, O3) with generous token limits
 """
 
 import asyncio
@@ -43,7 +43,7 @@ class GenerationResponse:
 
 
 class UnifiedModelManager:
-    """Manages both local and remote models with standardized interface."""
+    """Manages both local and remote models with generous token limits for natural behavior."""
     
     def __init__(self, max_concurrent_models: int = 2, config: Optional[Dict[str, Any]] = None):
         """Initialize unified model manager."""
@@ -60,7 +60,7 @@ class UnifiedModelManager:
         # Initialize remote clients
         self._init_remote_clients()
         
-        # Model configurations with unified 2000 token budget
+        # Model configurations with generous token budgets
         self.model_configs = self._load_unified_configs()
         
         # Performance tracking
@@ -120,18 +120,18 @@ class UnifiedModelManager:
             self.azure_client = None
     
     def _load_unified_configs(self) -> Dict[str, Dict[str, Any]]:
-        """Load unified model configurations with 2000 token budget for all."""
+        """Load unified model configurations with generous token budgets for natural behavior."""
         
-        # All models get the same generous token budget for unlimited thinking
+        # All models get generous token budgets to express themselves naturally
         base_config = {
-            'max_tokens': 2000,
+            'max_tokens': 4000,      # 2x increase - let models think and express fully
             'temperature': 0.5,
             'top_p': 0.9
         }
         
         configs = {}
         
-        # Local models
+        # Local models - all get generous limits
         local_models = [
             "tinyllama:latest", "qwen2:1.5b", "gemma2:2b", "phi3:mini",
             "llama3.2:latest", "mistral:instruct", "qwen:7b", "qwen3:latest"
@@ -145,11 +145,12 @@ class UnifiedModelManager:
                 **base_config
             }
         
-        # Remote models
+        # Remote models - even more generous for complex reasoning
         for model_name, remote_config in self.remote_configs.items():
             configs[model_name] = {
                 **remote_config,
-                **base_config
+                **base_config,
+                'max_tokens': 5000 if model_name != 'o3-remote' else 8000  # O3 gets extra for reasoning
             }
         
         return configs
@@ -172,7 +173,7 @@ class UnifiedModelManager:
         **kwargs
     ) -> GenerationResponse:
         """
-        Generate response from any model with unified interface.
+        Generate response from any model with unified interface and generous limits.
         
         Args:
             model_name: Name of model to use
@@ -214,9 +215,9 @@ class UnifiedModelManager:
             )
     
     async def _generate_ollama(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
-        """Generate response from Ollama model."""
+        """Generate response from Ollama model with generous token limits."""
         config = self.model_configs[model_name]
-        max_tokens = max_tokens or config.get('max_tokens', 2000)
+        max_tokens = max_tokens or config.get('max_tokens', 4000)  # Default to generous limit
         
         # Prepare generation options
         options = {
@@ -257,12 +258,12 @@ class UnifiedModelManager:
         )
     
     async def _generate_claude(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
-        """Generate response from Claude via AWS Bedrock."""
+        """Generate response from Claude via AWS Bedrock with generous token limits."""
         if not self.bedrock_client:
             raise RuntimeError("Bedrock client not initialized")
         
         config = self.model_configs[model_name]
-        max_tokens = max_tokens or config.get('max_tokens', 2000)
+        max_tokens = max_tokens or config.get('max_tokens', 5000)  # Generous default
         
         import json
         
@@ -315,12 +316,12 @@ class UnifiedModelManager:
         )
     
     async def _generate_o3(self, model_name: str, prompt: str, max_completion_tokens: Optional[int], reasoning_effort: Optional[str], **kwargs) -> GenerationResponse:
-        """Generate response from O3 via Azure OpenAI."""
+        """Generate response from O3 via Azure OpenAI with very generous token limits."""
         if not self.azure_client:
             raise RuntimeError("Azure client not initialized")
         
         config = self.model_configs[model_name]
-        max_completion_tokens = max_completion_tokens or config.get('max_tokens', 2000)
+        max_completion_tokens = max_completion_tokens or config.get('max_tokens', 8000)  # Very generous for O3
         reasoning_effort = reasoning_effort or 'high'
         
         start_time = time.time()
@@ -378,7 +379,7 @@ class UnifiedModelManager:
         }
     
     async def validate_all_models(self) -> Dict[str, Dict[str, Any]]:
-        """Validate that all models work with a simple test prompt."""
+        """Validate that all models work with a simple test prompt and generous token limits."""
         test_prompt = "You are negotiating. Say only: I offer $50"
         results = {}
         
@@ -386,11 +387,11 @@ class UnifiedModelManager:
             try:
                 if model_name == 'o3-remote':
                     response = await self.generate_response(
-                        model_name, test_prompt, max_completion_tokens=100, reasoning_effort='high'
+                        model_name, test_prompt, max_completion_tokens=8000, reasoning_effort='high'
                     )
                 else:
                     response = await self.generate_response(
-                        model_name, test_prompt, max_tokens=100
+                        model_name, test_prompt, max_tokens=4000
                     )
                 
                 results[model_name] = {
@@ -419,5 +420,5 @@ class UnifiedModelManager:
 
 
 def create_unified_model_manager(config: Optional[Dict[str, Any]] = None) -> UnifiedModelManager:
-    """Factory function to create unified model manager."""
+    """Factory function to create unified model manager with generous token limits."""
     return UnifiedModelManager(max_concurrent_models=2, config=config)

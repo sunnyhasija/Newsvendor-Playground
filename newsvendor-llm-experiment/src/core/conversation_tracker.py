@@ -1,6 +1,7 @@
 """
 Conversation State Management for Newsvendor Negotiations
 
+Enhanced version with local model fallback for price extraction.
 Tracks negotiation rounds, speaker alternation, termination conditions,
 and maintains conversation history with bulletproof state management.
 """
@@ -12,8 +13,17 @@ from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
 
+# Import enhanced price extractor
+try:
+    from parsing.enhanced_price_extractor import create_enhanced_price_extractor
+    ENHANCED_EXTRACTION_AVAILABLE = True
+except ImportError:
+    # Fallback to original extractor
+    from parsing.price_extractor import RobustPriceExtractor
+    ENHANCED_EXTRACTION_AVAILABLE = False
+
 from parsing.acceptance_detector import AcceptanceDetector, TerminationType
-from parsing.price_extractor import RobustPriceExtractor
+
 logger = logging.getLogger(__name__)
 
 
@@ -52,11 +62,11 @@ class NegotiationResult:
 
 
 class ConversationTracker:
-    """Bulletproof conversation state tracking."""
+    """Enhanced conversation state tracking with fallback price extraction."""
     
     def __init__(self, negotiation_id: str, buyer_model: str, supplier_model: str, 
                  reflection_pattern: str, config: Optional[Dict[str, Any]] = None):
-        """Initialize conversation tracker."""
+        """Initialize conversation tracker with enhanced price extraction."""
         self.negotiation_id = negotiation_id
         self.buyer_model = buyer_model
         self.supplier_model = supplier_model
@@ -83,8 +93,10 @@ class ConversationTracker:
         self.selling_price = self.config.get('selling_price', 100)
         self.production_cost = self.config.get('production_cost', 30)
         
-        # Components
-        self.price_extractor = RobustPriceExtractor(config)
+        # Initialize enhanced price extraction with fallback capability
+        self.price_extractor = self._initialize_price_extractor()
+        
+        # Acceptance detector (unchanged)
         self.acceptance_detector = AcceptanceDetector(config)
         
         # Timing
@@ -92,8 +104,60 @@ class ConversationTracker:
         self.last_activity = self.start_time
         
         logger.info(f"Initialized negotiation {negotiation_id}: {buyer_model} vs {supplier_model}")
+        if ENHANCED_EXTRACTION_AVAILABLE:
+            logger.debug("Using enhanced price extraction with local model fallback")
+        else:
+            logger.debug("Using traditional price extraction (enhanced extractor not available)")
     
-    def add_turn(
+    def _initialize_price_extractor(self):
+        """Initialize price extractor with fallback capability if available."""
+        
+        if not ENHANCED_EXTRACTION_AVAILABLE:
+            # Use original extractor as fallback
+            logger.info("Enhanced price extractor not available, using traditional extraction")
+            return RobustPriceExtractor(self.config)
+        
+        try:
+            # Try to initialize enhanced extractor with local model fallback
+            import ollama
+            
+            # Create Ollama client for fallback
+            ollama_client = ollama.Client()
+            
+            # Test if a suitable fallback model is available
+            fallback_model = None
+            test_models = ["llama3.2:latest", "llama3:latest", "mistral:instruct", "gemma2:2b", "tinyllama:latest"]
+            
+            for model in test_models:
+                try:
+                    # Quick test to see if model is available
+                    ollama_client.generate(
+                        model=model,
+                        prompt="test",
+                        options={'num_predict': 1}
+                    )
+                    fallback_model = model
+                    logger.info(f"Using {model} for price extraction fallback")
+                    break
+                except Exception:
+                    continue
+            
+            if fallback_model:
+                return create_enhanced_price_extractor(
+                    config=self.config,
+                    ollama_client=ollama_client,
+                    fallback_model=fallback_model
+                )
+            else:
+                logger.warning("No suitable local model found for price extraction fallback")
+                return create_enhanced_price_extractor(self.config, None)  # No fallback
+                
+        except Exception as e:
+            logger.warning(f"Could not initialize enhanced price extractor: {e}")
+            logger.info("Falling back to traditional price extraction")
+            return RobustPriceExtractor(self.config)
+    
+    async def add_turn(
         self, 
         speaker: str, 
         message: str, 
@@ -102,7 +166,7 @@ class ConversationTracker:
         generation_time: float = 0.0
     ) -> bool:
         """
-        Add a turn and check for termination conditions.
+        Add a turn with enhanced price extraction.
         
         Args:
             speaker: 'buyer' or 'supplier'
@@ -131,12 +195,21 @@ class ConversationTracker:
             # Increment round number
             self.round_number += 1
             
-            # Extract price from message
-            price = self.price_extractor.extract_price(
-                message, 
-                previous_context=[turn.message for turn in self.turns[-3:]],
-                speaker_role=speaker
-            )
+            # Extract price with enhanced extractor (async if available)
+            if ENHANCED_EXTRACTION_AVAILABLE and hasattr(self.price_extractor, 'extract_price'):
+                # Enhanced extractor - async call
+                price = await self.price_extractor.extract_price(
+                    message, 
+                    previous_context=[turn.message for turn in self.turns[-3:]],
+                    speaker_role=speaker
+                )
+            else:
+                # Traditional extractor - sync call
+                price = self.price_extractor.extract_price(
+                    message, 
+                    previous_context=[turn.message for turn in self.turns[-3:]],
+                    speaker_role=speaker
+                )
             
             # Create turn record
             turn = NegotiationTurn(
@@ -276,8 +349,35 @@ class ConversationTracker:
         
         return buyer_profit, supplier_profit
     
+    def get_extraction_stats(self) -> Dict[str, Any]:
+        """Get enhanced price extraction statistics."""
+        if ENHANCED_EXTRACTION_AVAILABLE and hasattr(self.price_extractor, 'get_extraction_stats'):
+            base_stats = self.price_extractor.get_extraction_stats()
+        else:
+            # Traditional extractor stats
+            base_stats = {
+                "total_attempts": len(self.turns),
+                "successful_extractions": len([t for t in self.turns if t.price is not None]),
+                "fallback_enabled": False
+            }
+            if base_stats["total_attempts"] > 0:
+                base_stats["success_rate"] = base_stats["successful_extractions"] / base_stats["total_attempts"]
+            else:
+                base_stats["success_rate"] = 0
+        
+        # Add negotiation-specific stats
+        base_stats.update({
+            "negotiation_id": self.negotiation_id,
+            "total_turns": len(self.turns),
+            "turns_with_prices": len([t for t in self.turns if t.price is not None]),
+            "price_extraction_rate": len([t for t in self.turns if t.price is not None]) / len(self.turns) if self.turns else 0,
+            "enhanced_extraction_available": ENHANCED_EXTRACTION_AVAILABLE
+        })
+        
+        return base_stats
+    
     def get_final_result(self) -> NegotiationResult:
-        """Get complete negotiation result."""
+        """Get complete negotiation result with enhanced extraction stats."""
         buyer_profit, supplier_profit = self.calculate_profits()
         
         # Calculate distance from optimal price
@@ -289,9 +389,9 @@ class ConversationTracker:
         total_tokens = sum(turn.tokens_used for turn in self.turns)
         total_time = time.time() - self.start_time
         
-        # Generate metadata
+        # Generate enhanced metadata with extraction stats
         metadata = {
-            "price_extraction_stats": self.price_extractor.get_extraction_stats(),
+            "price_extraction_stats": self.get_extraction_stats(),
             "final_state": self.get_current_state(),
             "conversation_length": len(self.turns),
             "avg_tokens_per_turn": total_tokens / len(self.turns) if self.turns else 0,
@@ -300,7 +400,8 @@ class ConversationTracker:
                 "min_price": min(self.last_prices) if self.last_prices else None,
                 "max_price": max(self.last_prices) if self.last_prices else None,
                 "price_variance": None  # Could calculate variance
-            }
+            },
+            "extraction_method": "enhanced" if ENHANCED_EXTRACTION_AVAILABLE else "traditional"
         }
         
         return NegotiationResult(

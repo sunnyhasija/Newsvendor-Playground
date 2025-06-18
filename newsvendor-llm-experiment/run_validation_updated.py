@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 run_validation_updated.py
-Validation Experiment Runner for Updated Newsvendor Study
-Tests all 10 models (8 local + 2 remote) with standardized reflection prompts
+Enhanced Validation Experiment Runner for Updated Newsvendor Study
+Tests all 10 models with smart pairing strategy, generous token limits, and enhanced price extraction
 
 Place this file in the ROOT directory of your project
 """
@@ -26,7 +26,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('newsvendor_validation_updated.log'),
+        logging.FileHandler('newsvendor_validation_enhanced.log'),
         logging.StreamHandler()
     ]
 )
@@ -54,14 +54,14 @@ class ValidationConfig:
     supplier_model: str
     reflection_pattern: str  # "00", "01", "10", "11"
     max_rounds: int = 10
-    timeout_seconds: int = 120  # Longer timeout for remote models
+    timeout_seconds: int = 120  # Longer timeout for generous token limits
 
 
-class ValidationRunner:
-    """Runs validation experiments across all 10 models."""
+class EnhancedValidationRunner:
+    """Runs comprehensive validation experiments with generous token limits."""
     
     def __init__(self):
-        """Initialize validation runner."""
+        """Initialize enhanced validation runner."""
         self.model_manager = None
         self.results = []
         self.start_time = None
@@ -77,30 +77,24 @@ class ValidationRunner:
             'timeout_seconds': 120
         }
         
-        # All 10 models in complexity order
-        self.all_models = [
-            # Tiny models
-            "tinyllama:latest",
-            "qwen2:1.5b",
-            # Small models  
-            "gemma2:2b",
-            "phi3:mini", 
-            "llama3.2:latest",
-            # Medium models
-            "mistral:instruct",
-            "qwen:7b",
-            # Large models
-            "qwen3:latest",
-            # Remote models
-            "claude-sonnet-4-remote",
-            "o3-remote"
-        ]
+        # All 10 models organized by tiers
+        self.model_tiers = {
+            'ultra': ["tinyllama:latest", "qwen2:1.5b"],
+            'compact': ["gemma2:2b", "phi3:mini", "llama3.2:latest"],
+            'mid': ["mistral:instruct", "qwen:7b"],
+            'large': ["qwen3:latest"],
+            'remote': ["claude-sonnet-4-remote", "o3-remote"]
+        }
         
-        logger.info("Initialized ValidationRunner for 10 models")
+        self.all_models = []
+        for tier_models in self.model_tiers.values():
+            self.all_models.extend(tier_models)
+        
+        logger.info("Initialized EnhancedValidationRunner with generous token limits")
     
     async def initialize(self) -> None:
         """Initialize the model manager."""
-        logger.info("Initializing unified model manager...")
+        logger.info("Initializing unified model manager with generous token limits...")
         self.model_manager = create_unified_model_manager()
         
         # Validate all models are available
@@ -119,53 +113,178 @@ class ValidationRunner:
         
         if failed_models:
             logger.warning(f"❌ Failed models: {failed_models}")
+            
+            # Update model lists to exclude failed models
+            self._remove_failed_models(failed_models)
         
         logger.info("Model manager initialized successfully")
     
-    async def run_validation_phase(self) -> Dict[str, Any]:
-        """Run Phase 1: Validation with 10 models, 1 negotiation each."""
-        logger.info("=== VALIDATION PHASE ===")
-        logger.info("Testing all 10 models with 1 negotiation each")
-        self.start_time = time.time()
+    def _remove_failed_models(self, failed_models: List[str]) -> None:
+        """Remove failed models from tier lists and all_models."""
+        for tier, models in self.model_tiers.items():
+            self.model_tiers[tier] = [m for m in models if m not in failed_models]
         
-        # Create validation configurations
-        # Test each model as buyer vs first supplier (for simplicity)
+        self.all_models = [m for m in self.all_models if m not in failed_models]
+        
+        logger.info(f"Updated model lists to exclude {len(failed_models)} failed models")
+    
+    def _generate_validation_pairs(self) -> List[ValidationConfig]:
+        """Generate smart validation pairs without relying on a single base model."""
         validation_configs = []
         
+        # Strategy 1: Each model as buyer paired with a model from different tier
+        logger.info("Generating validation pairs using tier-based strategy...")
+        
         for buyer_model in self.all_models:
-            # Use tinyllama as standard supplier for validation
-            supplier_model = "tinyllama:latest"
+            buyer_tier = self._get_model_tier(buyer_model)
             
-            # Test with full reflection (pattern "11") to see thinking
-            config = ValidationConfig(
-                buyer_model=buyer_model,
-                supplier_model=supplier_model,
-                reflection_pattern="11"  # Both agents reflect
+            # Find a suitable supplier from a different tier (if possible)
+            supplier_model = self._find_suitable_supplier(buyer_model, buyer_tier)
+            
+            if supplier_model:
+                config = ValidationConfig(
+                    buyer_model=buyer_model,
+                    supplier_model=supplier_model,
+                    reflection_pattern="11"  # Both agents reflect for validation
+                )
+                validation_configs.append(config)
+                logger.debug(f"Paired {buyer_model} ({buyer_tier}) with {supplier_model}")
+            else:
+                logger.warning(f"Could not find suitable supplier for {buyer_model}")
+        
+        # Strategy 2: Add some reverse pairs (each model as supplier)
+        # This ensures we test both buyer and supplier capabilities
+        reverse_pairs = []
+        for original_config in validation_configs[:5]:  # Test first 5 as suppliers too
+            reverse_config = ValidationConfig(
+                buyer_model=original_config.supplier_model,
+                supplier_model=original_config.buyer_model,
+                reflection_pattern="11"
             )
-            validation_configs.append(config)
+            reverse_pairs.append(reverse_config)
+        
+        validation_configs.extend(reverse_pairs)
+        
+        # Strategy 3: Add some intra-tier pairs for diversity
+        intra_tier_pairs = self._generate_intra_tier_pairs()
+        validation_configs.extend(intra_tier_pairs)
+        
+        logger.info(f"Generated {len(validation_configs)} validation pairs:")
+        logger.info(f"  - {len(self.all_models)} primary buyer tests")
+        logger.info(f"  - {len(reverse_pairs)} reverse supplier tests")
+        logger.info(f"  - {len(intra_tier_pairs)} intra-tier diversity tests")
+        
+        return validation_configs
+    
+    def _get_model_tier(self, model_name: str) -> str:
+        """Get the tier of a model."""
+        for tier, models in self.model_tiers.items():
+            if model_name in models:
+                return tier
+        return 'unknown'
+    
+    def _find_suitable_supplier(self, buyer_model: str, buyer_tier: str) -> Optional[str]:
+        """Find a suitable supplier model for the given buyer."""
+        
+        # If buyer is remote, prefer local suppliers
+        if buyer_tier == 'remote':
+            for tier in ['ultra', 'compact', 'mid', 'large']:
+                if self.model_tiers[tier]:
+                    return self.model_tiers[tier][0]  # First available
+        
+        # If buyer is local, try different local tiers first
+        tier_preference = {
+            'ultra': ['compact', 'mid', 'large', 'ultra'],
+            'compact': ['ultra', 'mid', 'large', 'compact'],
+            'mid': ['compact', 'ultra', 'large', 'mid'],
+            'large': ['mid', 'compact', 'ultra', 'large']
+        }
+        
+        preferences = tier_preference.get(buyer_tier, ['ultra', 'compact', 'mid', 'large'])
+        
+        for preferred_tier in preferences:
+            available_models = [m for m in self.model_tiers[preferred_tier] if m != buyer_model]
+            if available_models:
+                return available_models[0]
+        
+        # Last resort: use any available model except the buyer itself
+        for model in self.all_models:
+            if model != buyer_model:
+                return model
+        
+        return None
+    
+    def _generate_intra_tier_pairs(self) -> List[ValidationConfig]:
+        """Generate some intra-tier pairs for diversity testing."""
+        intra_pairs = []
+        
+        # Test within tiers that have multiple models
+        for tier, models in self.model_tiers.items():
+            if len(models) >= 2:
+                # Pair first with second in the tier
+                config = ValidationConfig(
+                    buyer_model=models[0],
+                    supplier_model=models[1],
+                    reflection_pattern="01"  # Mix reflection patterns
+                )
+                intra_pairs.append(config)
+                
+                # If tier has 3+ models, add another pair
+                if len(models) >= 3:
+                    config2 = ValidationConfig(
+                        buyer_model=models[1],
+                        supplier_model=models[2],
+                        reflection_pattern="10"  # Different reflection pattern
+                    )
+                    intra_pairs.append(config2)
+        
+        return intra_pairs
+    
+    async def run_validation_phase(self) -> Dict[str, Any]:
+        """Run comprehensive validation with generous token limits."""
+        logger.info("=== ENHANCED VALIDATION PHASE ===")
+        logger.info("Testing all models with generous token limits and smart pairing")
+        self.start_time = time.time()
+        
+        # Generate validation configurations
+        validation_configs = self._generate_validation_pairs()
+        
+        if not validation_configs:
+            logger.error("No validation configurations generated!")
+            return {"error": "No validation pairs could be generated"}
         
         logger.info(f"Running {len(validation_configs)} validation negotiations...")
         
-        # Run validation negotiations sequentially (safer for debugging)
+        # Run validation negotiations with progress tracking
         validation_results = []
+        total_cost = 0.0
+        
         for i, config in enumerate(validation_configs, 1):
-            logger.info(f"\n[{i}/{len(validation_configs)}] Testing {config.buyer_model} vs {config.supplier_model}")
+            logger.info(f"\n[{i}/{len(validation_configs)}] Testing {config.buyer_model} vs {config.supplier_model} ({config.reflection_pattern})")
             
-            result = await self._run_single_negotiation(config, f"validation_{i:02d}")
+            start_nego_time = time.time()
+            result = await self._run_single_negotiation(config, f"validation_{i:03d}")
+            nego_time = time.time() - start_nego_time
+            
             validation_results.append(result)
+            
+            # Track cost
+            nego_cost = result.metadata.get('total_cost', 0.0)
+            total_cost += nego_cost
             
             # Show immediate results
             if result.completed:
-                logger.info(f"✅ SUCCESS: Agreed on ${result.agreed_price} in {result.total_rounds} rounds")
-                logger.info(f"   Tokens: {result.total_tokens}, Cost: ${result.metadata.get('total_cost', 0):.6f}")
+                logger.info(f"✅ SUCCESS: Agreed on ${result.agreed_price} in {result.total_rounds} rounds ({nego_time:.1f}s)")
+                if nego_cost > 0:
+                    logger.info(f"   Cost: ${nego_cost:.6f}")
             else:
-                logger.info(f"❌ FAILED: {result.termination_type.value}")
+                logger.info(f"❌ FAILED: {result.termination_type.value} ({nego_time:.1f}s)")
             
             # Brief pause between negotiations
-            await asyncio.sleep(1)
+            await asyncio.sleep(0.5)
         
         # Analyze validation results
-        analysis = self._analyze_validation_results(validation_results)
+        analysis = self._analyze_validation_results(validation_results, total_cost)
         
         # Save validation results
         await self._save_validation_results(validation_results, analysis)
@@ -277,10 +396,10 @@ class ValidationRunner:
                 total_cost += getattr(response, 'cost_estimate', 0.0)
                 
                 # Add turn to conversation
-                turn_added = tracker.add_turn(
+                turn_added = await tracker.add_turn(
                     speaker=agent_role,
                     message=response.text,
-                    reflection=None,  # Could extract reflection from response if needed
+                    reflection=None,
                     tokens_used=response.tokens_used,
                     generation_time=response.generation_time
                 )
@@ -290,7 +409,7 @@ class ValidationRunner:
                     tracker.force_termination("turn_error")
                     break
                 
-                # Show progress
+                # Show progress (debug level)
                 logger.debug(f"  Round {tracker.round_number}: {agent_role.capitalize()} -> '{response.text[:50]}...'")
                 
                 # Check for early termination
@@ -317,8 +436,8 @@ class ValidationRunner:
             result.metadata['total_cost'] = total_cost
             return result
     
-    def _analyze_validation_results(self, results: List[NegotiationResult]) -> Dict[str, Any]:
-        """Analyze validation results."""
+    def _analyze_validation_results(self, results: List[NegotiationResult], total_cost: float) -> Dict[str, Any]:
+        """Analyze validation results with comprehensive metrics."""
         
         total = len(results)
         successful = [r for r in results if r.completed and r.agreed_price]
@@ -328,25 +447,28 @@ class ValidationRunner:
                 "total_negotiations": total,
                 "successful_negotiations": len(successful),
                 "success_rate": len(successful) / total if total > 0 else 0,
-                "completion_time": time.time() - self.start_time if self.start_time else 0
+                "completion_time": time.time() - self.start_time if self.start_time else 0,
+                "total_cost": total_cost
             },
             "model_performance": {},
-            "cost_analysis": {},
-            "conversation_analysis": {}
+            "tier_analysis": {},
+            "pairing_analysis": {},
+            "reflection_analysis": {},
+            "cost_analysis": {}
         }
         
+        # Basic price and efficiency stats
         if successful:
-            # Price analysis
             prices = [r.agreed_price for r in successful]
             analysis["price_statistics"] = {
                 "mean_price": sum(prices) / len(prices),
                 "median_price": sorted(prices)[len(prices)//2],
                 "min_price": min(prices),
                 "max_price": max(prices),
-                "optimal_convergence": sum(1 for p in prices if 60 <= p <= 70) / len(prices)
+                "optimal_convergence": sum(1 for p in prices if 60 <= p <= 70) / len(prices),
+                "price_std": self._calculate_std(prices)
             }
             
-            # Efficiency analysis
             tokens = [r.total_tokens for r in successful]
             rounds = [r.total_rounds for r in successful]
             
@@ -356,53 +478,113 @@ class ValidationRunner:
                 "tokens_per_round": sum(tokens) / sum(rounds) if sum(rounds) > 0 else 0
             }
         
-        # Per-model analysis
+        # Per-model analysis (both as buyer and supplier)
+        model_stats = {}
         for result in results:
-            model = result.buyer_model  # All tested as buyers
+            for role, model in [("buyer", result.buyer_model), ("supplier", result.supplier_model)]:
+                if model not in model_stats:
+                    model_stats[model] = {
+                        "total_negotiations": 0,
+                        "as_buyer": {"count": 0, "successes": 0, "prices": [], "tokens": []},
+                        "as_supplier": {"count": 0, "successes": 0, "prices": [], "tokens": []},
+                        "tier": self._get_model_tier(model)
+                    }
+                
+                model_stats[model]["total_negotiations"] += 1
+                role_stats = model_stats[model][f"as_{role}"]
+                role_stats["count"] += 1
+                
+                if result.completed:
+                    role_stats["successes"] += 1
+                    if result.agreed_price:
+                        role_stats["prices"].append(result.agreed_price)
+                    role_stats["tokens"].append(result.total_tokens)
+        
+        # Calculate model performance metrics
+        for model, stats in model_stats.items():
+            for role in ["as_buyer", "as_supplier"]:
+                role_data = stats[role]
+                if role_data["count"] > 0:
+                    role_data["success_rate"] = role_data["successes"] / role_data["count"]
+                    if role_data["prices"]:
+                        role_data["avg_price"] = sum(role_data["prices"]) / len(role_data["prices"])
+                    if role_data["tokens"]:
+                        role_data["avg_tokens"] = sum(role_data["tokens"]) / len(role_data["tokens"])
+                else:
+                    # Add missing success_rate for models not tested in this role
+                    role_data["success_rate"] = 0.0
+        
+        analysis["model_performance"] = model_stats
+        
+        # Tier-based analysis
+        tier_stats = {}
+        for tier, models in self.model_tiers.items():
+            if not models:  # Skip empty tiers
+                continue
+                
+            tier_results = [r for r in results if r.buyer_model in models or r.supplier_model in models]
+            tier_successful = [r for r in tier_results if r.completed]
             
-            analysis["model_performance"][model] = {
-                "success": result.completed,
-                "agreed_price": result.agreed_price,
-                "rounds": result.total_rounds,
-                "tokens": result.total_tokens,
-                "cost": result.metadata.get('total_cost', 0.0),
-                "generation_time": result.total_time,
-                "model_type": "remote" if "remote" in model else "local"
+            tier_stats[tier] = {
+                "models": models,
+                "negotiations": len(tier_results),
+                "successes": len(tier_successful),
+                "success_rate": len(tier_successful) / len(tier_results) if tier_results else 0,
+                "avg_cost": sum(r.metadata.get('total_cost', 0) for r in tier_results) / len(tier_results) if tier_results else 0
             }
         
+        analysis["tier_analysis"] = tier_stats
+        
         # Cost analysis
-        total_cost = sum(r.metadata.get('total_cost', 0.0) for r in results)
-        remote_cost = sum(
-            r.metadata.get('total_cost', 0.0) for r in results 
-            if "remote" in r.buyer_model
-        )
+        remote_cost = sum(r.metadata.get('total_cost', 0) for r in results 
+                         if 'remote' in r.buyer_model or 'remote' in r.supplier_model)
         
         analysis["cost_analysis"] = {
             "total_validation_cost": total_cost,
             "remote_model_cost": remote_cost,
             "local_model_cost": total_cost - remote_cost,
-            "avg_cost_per_negotiation": total_cost / total if total > 0 else 0
+            "avg_cost_per_negotiation": total_cost / total if total > 0 else 0,
+            "cost_per_success": total_cost / len(successful) if successful else 0
         }
         
         return analysis
     
+    def _calculate_std(self, values: List[float]) -> float:
+        """Calculate standard deviation."""
+        if len(values) < 2:
+            return 0.0
+        
+        mean = sum(values) / len(values)
+        variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
+        return variance ** 0.5
+    
     async def _save_validation_results(self, results: List[NegotiationResult], analysis: Dict[str, Any]):
-        """Save validation results to files."""
+        """Save comprehensive validation results to files."""
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_dir = Path('./validation_results_updated')
+        output_dir = Path('./validation_results_enhanced')
         output_dir.mkdir(exist_ok=True)
         
         # Save detailed results
         results_data = {
             "metadata": {
-                "phase": "validation_updated",
+                "phase": "enhanced_validation",
                 "timestamp": timestamp,
+                "strategy": "smart_pairing_generous_tokens",
                 "total_models": len(self.all_models),
                 "game_config": self.game_config,
-                "unified_token_budget": 2000,
-                "standardized_reflection": True
+                "token_limits": {
+                    "local_models": "4000 tokens",
+                    "claude": "5000 tokens", 
+                    "o3": "8000 tokens"
+                },
+                "enhanced_features": [
+                    "generous_token_limits",
+                    "smart_tier_pairing",
+                    "comprehensive_analysis"
+                ]
             },
+            "model_tiers": self.model_tiers,
             "analysis": analysis,
             "results": [asdict(result) for result in results]
         }
@@ -414,17 +596,21 @@ class ValidationRunner:
         # Save conversation transcripts
         transcripts_file = output_dir / f"validation_conversations_{timestamp}.txt"
         with open(transcripts_file, 'w') as f:
-            f.write("NEWSVENDOR EXPERIMENT - VALIDATION CONVERSATIONS (UPDATED)\n")
+            f.write("NEWSVENDOR EXPERIMENT - ENHANCED VALIDATION CONVERSATIONS\n")
             f.write("=" * 80 + "\n\n")
             
             for result in results:
+                buyer_tier = self._get_model_tier(result.buyer_model)
+                supplier_tier = self._get_model_tier(result.supplier_model)
+                
                 f.write(f"NEGOTIATION: {result.negotiation_id}\n")
-                f.write(f"BUYER: {result.buyer_model}\n")
-                f.write(f"SUPPLIER: {result.supplier_model}\n")
+                f.write(f"BUYER: {result.buyer_model} ({buyer_tier})\n")
+                f.write(f"SUPPLIER: {result.supplier_model} ({supplier_tier})\n")
                 f.write(f"REFLECTION: {result.reflection_pattern}\n")
                 f.write(f"RESULT: {'SUCCESS' if result.completed else 'FAILED'}\n")
                 f.write(f"PRICE: ${result.agreed_price}\n")
                 f.write(f"ROUNDS: {result.total_rounds}\n")
+                f.write(f"TOKENS: {result.total_tokens}\n")
                 f.write(f"COST: ${result.metadata.get('total_cost', 0):.6f}\n")
                 f.write("-" * 80 + "\n")
                 
@@ -437,9 +623,50 @@ class ValidationRunner:
                 
                 f.write("=" * 80 + "\n\n")
         
-        logger.info(f"Validation results saved to:")
+        # Save summary report
+        summary_file = output_dir / f"validation_summary_{timestamp}.txt"
+        with open(summary_file, 'w') as f:
+            f.write("ENHANCED VALIDATION SUMMARY\n")
+            f.write("=" * 50 + "\n\n")
+            
+            summary = analysis["validation_summary"]
+            f.write(f"Total negotiations: {summary['total_negotiations']}\n")
+            f.write(f"Successful: {summary['successful_negotiations']} ({summary['success_rate']*100:.1f}%)\n")
+            f.write(f"Duration: {summary['completion_time']:.1f} seconds\n")
+            f.write(f"Total cost: ${summary['total_cost']:.6f}\n\n")
+            
+            # Token limits info
+            f.write("TOKEN LIMITS:\n")
+            f.write("-" * 30 + "\n")
+            f.write("Local models: 4,000 tokens (2x increase)\n")
+            f.write("Claude: 5,000 tokens\n")
+            f.write("O3: 8,000 tokens (for reasoning)\n\n")
+            
+            # Model performance summary
+            f.write("MODEL PERFORMANCE:\n")
+            f.write("-" * 30 + "\n")
+            model_perf = analysis["model_performance"]
+            for model, stats in model_perf.items():
+                buyer_rate = stats["as_buyer"]["success_rate"] if stats["as_buyer"]["count"] > 0 else 0
+                supplier_rate = stats["as_supplier"]["success_rate"] if stats["as_supplier"]["count"] > 0 else 0
+                f.write(f"{model} ({stats['tier']}):\n")
+                f.write(f"  As buyer: {buyer_rate*100:.1f}% ({stats['as_buyer']['count']} tests)\n")
+                f.write(f"  As supplier: {supplier_rate*100:.1f}% ({stats['as_supplier']['count']} tests)\n\n")
+            
+            # Tier analysis
+            f.write("TIER ANALYSIS:\n")
+            f.write("-" * 30 + "\n")
+            tier_analysis = analysis["tier_analysis"]
+            for tier, stats in tier_analysis.items():
+                f.write(f"{tier.upper()} tier:\n")
+                f.write(f"  Models: {len(stats['models'])}\n")
+                f.write(f"  Success rate: {stats['success_rate']*100:.1f}%\n")
+                f.write(f"  Avg cost: ${stats['avg_cost']:.6f}\n\n")
+        
+        logger.info(f"Enhanced validation results saved to:")
         logger.info(f"  Results: {results_file}")
         logger.info(f"  Conversations: {transcripts_file}")
+        logger.info(f"  Summary: {summary_file}")
     
     async def shutdown(self):
         """Clean shutdown."""
@@ -449,17 +676,22 @@ class ValidationRunner:
 
 @click.command()
 @click.option('--models', type=str, help='Comma-separated list of models to test (default: all 10)')
-@click.option('--pattern', type=str, default='11', help='Reflection pattern to test (default: 11)')
+@click.option('--pattern', type=str, default='11', help='Primary reflection pattern to test (default: 11)')
 @click.option('--output', type=click.Path(), help='Output directory for results')
-def main(models: Optional[str], pattern: str, output: Optional[str]):
-    """Run validation phase for updated newsvendor experiment."""
+@click.option('--quick', is_flag=True, help='Quick validation with fewer pairs')
+def main(models: Optional[str], pattern: str, output: Optional[str], quick: bool):
+    """Run enhanced validation phase for newsvendor experiment with generous token limits."""
     
     async def run_validation():
-        runner = ValidationRunner()
+        runner = EnhancedValidationRunner()
         
         # Override models if specified
         if models:
-            runner.all_models = [model.strip() for model in models.split(',')]
+            specified_models = [model.strip() for model in models.split(',')]
+            # Update all tier lists to only include specified models
+            for tier in runner.model_tiers:
+                runner.model_tiers[tier] = [m for m in runner.model_tiers[tier] if m in specified_models]
+            runner.all_models = [m for m in runner.all_models if m in specified_models]
         
         # Override output directory if specified
         if output:
@@ -467,11 +699,31 @@ def main(models: Optional[str], pattern: str, output: Optional[str]):
         
         try:
             await runner.initialize()
+            
+            # Modify strategy for quick mode
+            if quick:
+                logger.info("🚀 Quick validation mode: reducing test pairs")
+                # Keep only primary strategy (each model as buyer once)
+                original_method = runner._generate_validation_pairs
+                def quick_pairs():
+                    configs = []
+                    for buyer_model in runner.all_models:
+                        buyer_tier = runner._get_model_tier(buyer_model)
+                        supplier_model = runner._find_suitable_supplier(buyer_model, buyer_tier)
+                        if supplier_model:
+                            configs.append(ValidationConfig(
+                                buyer_model=buyer_model,
+                                supplier_model=supplier_model,
+                                reflection_pattern=pattern
+                            ))
+                    return configs
+                runner._generate_validation_pairs = quick_pairs
+            
             analysis = await runner.run_validation_phase()
             
-            # Print summary
+            # Print comprehensive summary
             print("\n" + "=" * 80)
-            print("VALIDATION PHASE COMPLETE")
+            print("ENHANCED VALIDATION PHASE COMPLETE")
             print("=" * 80)
             
             summary = analysis["validation_summary"]
@@ -489,7 +741,33 @@ def main(models: Optional[str], pattern: str, output: Optional[str]):
                 print(f"Average price: ${prices['mean_price']:.2f}")
                 print(f"Optimal convergence: {prices['optimal_convergence']*100:.1f}%")
             
-            print("\n✅ Validation complete! Ready for full experiment.")
+            # Model performance highlights
+            if "model_performance" in analysis:
+                print(f"\nMODEL PERFORMANCE HIGHLIGHTS:")
+                model_perf = analysis["model_performance"]
+                
+                # Find best overall model (handle missing success_rate)
+                def get_combined_success_rate(model_stats):
+                    buyer_rate = model_stats[1]['as_buyer'].get('success_rate', 0)
+                    supplier_rate = model_stats[1]['as_supplier'].get('success_rate', 0)
+                    return (buyer_rate + supplier_rate) / 2
+                
+                if model_perf:  # Check if there are any models
+                    best_overall = max(model_perf.items(), key=get_combined_success_rate)
+                    print(f"Best overall: {best_overall[0]} ({runner._get_model_tier(best_overall[0])} tier)")
+                
+                # Show tier summary
+                if "tier_analysis" in analysis:
+                    print(f"\nTIER PERFORMANCE:")
+                    for tier, stats in analysis["tier_analysis"].items():
+                        print(f"  {tier.upper()}: {stats['success_rate']*100:.1f}% success rate ({len(stats['models'])} models)")
+            
+            print(f"\nTOKEN LIMITS USED:")
+            print(f"  Local models: 4,000 tokens (2x increase)")
+            print(f"  Claude: 5,000 tokens")
+            print(f"  O3: 8,000 tokens (for reasoning)")
+            
+            print("\n✅ Enhanced validation complete! Ready for full experiment.")
             
         except Exception as e:
             print(f"❌ Validation failed: {e}")

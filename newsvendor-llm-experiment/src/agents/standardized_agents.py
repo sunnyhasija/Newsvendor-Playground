@@ -2,7 +2,7 @@
 """
 src/agents/standardized_agents.py
 Standardized Agents for Newsvendor Experiment - integrates with existing architecture
-Uses unified reflection prompts across all 10 models (local + remote)
+Uses unified reflection prompts across all 10 models with generous token limits
 """
 
 import logging
@@ -25,7 +25,7 @@ class AgentState:
 
 
 class StandardizedBuyerAgent:
-    """Buyer agent with standardized reflection prompts for all models."""
+    """Buyer agent with standardized reflection prompts and generous token limits."""
     
     def __init__(
         self, 
@@ -69,7 +69,7 @@ class StandardizedBuyerAgent:
         round_number: int,
         max_rounds: int
     ):
-        """Generate buyer's negotiation response with standardized prompts."""
+        """Generate buyer's negotiation response with standardized prompts and generous token limits."""
         try:
             # Update state based on context
             self._update_state(negotiation_history, round_number, max_rounds)
@@ -77,19 +77,19 @@ class StandardizedBuyerAgent:
             # Build standardized prompt
             prompt = self._build_standardized_prompt(context, negotiation_history, round_number)
             
-            # Generate response with appropriate parameters
+            # Generate response with generous token limits
             if self.model_name == 'o3-remote':
                 response = await self.model_manager.generate_response(
                     model_name=self.model_name,
                     prompt=prompt,
-                    max_completion_tokens=2000,
+                    max_completion_tokens=8000,  # Very generous for O3's reasoning
                     reasoning_effort='high'
                 )
             else:
                 response = await self.model_manager.generate_response(
                     model_name=self.model_name,
                     prompt=prompt,
-                    max_tokens=2000
+                    max_tokens=4000  # Generous for all other models
                 )
             
             if response.success:
@@ -223,7 +223,7 @@ Strategy: {strategy}
 
 
 class StandardizedSupplierAgent:
-    """Supplier agent with standardized reflection prompts for all models."""
+    """Supplier agent with standardized reflection prompts and generous token limits."""
     
     def __init__(
         self, 
@@ -265,7 +265,7 @@ class StandardizedSupplierAgent:
         round_number: int,
         max_rounds: int
     ):
-        """Generate supplier's negotiation response with standardized prompts."""
+        """Generate supplier's negotiation response with standardized prompts and generous token limits."""
         try:
             # Update state based on context
             self._update_state(negotiation_history, round_number, max_rounds)
@@ -273,19 +273,19 @@ class StandardizedSupplierAgent:
             # Build standardized prompt
             prompt = self._build_standardized_prompt(context, negotiation_history, round_number)
             
-            # Generate response with appropriate parameters
+            # Generate response with generous token limits
             if self.model_name == 'o3-remote':
                 response = await self.model_manager.generate_response(
                     model_name=self.model_name,
                     prompt=prompt,
-                    max_completion_tokens=2000,
+                    max_completion_tokens=8000,  # Very generous for O3's reasoning
                     reasoning_effort='high'
                 )
             else:
                 response = await self.model_manager.generate_response(
                     model_name=self.model_name,
                     prompt=prompt,
-                    max_tokens=2000
+                    max_tokens=4000  # Generous for all other models
                 )
             
             if response.success:
