@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 src/core/unified_model_manager.py
-Unified Model Manager for Newsvendor Experiment - now includes Azure AI Grok support
-Handles local Ollama models and remote models (Claude, O3, Azure AI Grok) with generous token limits
+Unified Model Manager for Newsvendor Experiment - TinyLlama removed
+Handles local Ollama models and remote models (Claude, O3) with generous token limits
 """
 
 import asyncio
@@ -43,10 +43,10 @@ class GenerationResponse:
 
 
 class UnifiedModelManager:
-    """Manages local and remote models including Azure AI Grok with generous token limits."""
+    """Manages local and remote models with generous token limits (TinyLlama removed)."""
     
     def __init__(self, max_concurrent_models: int = 2, config: Optional[Dict[str, Any]] = None):
-        """Initialize unified model manager with Azure AI Grok support."""
+        """Initialize unified model manager without TinyLlama."""
         self.config = config or {}
         self.max_concurrent = max_concurrent_models
         
@@ -60,14 +60,14 @@ class UnifiedModelManager:
         # Initialize remote clients
         self._init_remote_clients()
         
-        # Model configurations with generous token budgets
+        # Model configurations with generous token budgets (NO TINYLLAMA)
         self.model_configs = self._load_unified_configs()
         
         # Performance tracking
         self.total_cost = 0.0
         self.total_generations = 0
         
-        logger.info(f"Initialized UnifiedModelManager with {len(self.get_available_models())} models (including Azure AI Grok)")
+        logger.info(f"Initialized UnifiedModelManager with {len(self.get_available_models())} models (TinyLlama removed)")
     
     def _load_remote_configs(self) -> Dict[str, Dict[str, Any]]:
         """Load remote model configurations from environment."""
@@ -92,15 +92,15 @@ class UnifiedModelManager:
                 'provider': 'azure_ai_grok',
                 'type': 'remote',
                 'cost_per_token': 0.000020,  # Estimated cost per token for Grok
-                'api_key': os.getenv('AZURE_AI_GROK3_MINI_API_KEY'),  # Updated env var name
-                'base_url': 'https://newsvendor-playground-resource.services.ai.azure.com/models',  # Updated endpoint
-                'api_version': '2024-05-01-preview',  # API version as specified
-                'model_name': 'grok-3-mini'  # Updated model name
+                'api_key': os.getenv('AZURE_AI_GROK3_MINI_API_KEY'),
+                'base_url': 'https://newsvendor-playground-resource.services.ai.azure.com/models',
+                'api_version': '2024-05-01-preview',
+                'model_name': 'grok-3-mini'
             }
         }
     
     def _init_remote_clients(self):
-        """Initialize remote model clients including Azure AI Grok."""
+        """Initialize remote model clients."""
         # Claude (AWS Bedrock)
         try:
             import boto3
@@ -148,7 +148,7 @@ class UnifiedModelManager:
             self.grok_client = None
     
     def _load_unified_configs(self) -> Dict[str, Dict[str, Any]]:
-        """Load unified model configurations without restrictive token budgets."""
+        """Load unified model configurations without restrictive token budgets (NO TINYLLAMA)."""
         
         # Base config without artificial token limits
         base_config = {
@@ -159,6 +159,7 @@ class UnifiedModelManager:
         configs = {}
         
         # Local models - no token limits, let them express naturally
+        # REMOVED "tinyllama:latest" from this list
         local_models = [
             "qwen2:1.5b", "gemma2:2b", "phi3:mini",
             "llama3.2:latest", "mistral:instruct", "qwen:7b", "qwen3:latest"
@@ -178,8 +179,6 @@ class UnifiedModelManager:
             # Use service maximum limits, not artificial restrictions
             if model_name == 'o3-remote':
                 max_tokens = None  # Let O3 use its full reasoning capacity
-            elif model_name == 'grok-remote':
-                max_tokens = None  # Let Grok express fully
             elif model_name == 'claude-sonnet-4-remote':
                 max_tokens = None  # Let Claude use full capacity
             else:
@@ -194,7 +193,7 @@ class UnifiedModelManager:
         return configs
     
     def get_available_models(self) -> List[str]:
-        """Get list of all available models."""
+        """Get list of all available models (excluding TinyLlama)."""
         return list(self.model_configs.keys())
     
     def get_model_details(self) -> Dict[str, Dict[str, Any]]:
@@ -216,7 +215,7 @@ class UnifiedModelManager:
         Args:
             model_name: Name of model to use
             prompt: Input prompt
-            max_tokens: Maximum tokens (for local/Claude/Grok)
+            max_tokens: Maximum tokens (for local/Claude)
             max_completion_tokens: Maximum completion tokens (for O3)
             reasoning_effort: Reasoning effort for O3 ('high', 'medium', 'low')
             **kwargs: Additional parameters
@@ -240,7 +239,7 @@ class UnifiedModelManager:
             elif config['provider'] == 'azure':
                 return await self._generate_o3(model_name, prompt, max_completion_tokens, reasoning_effort, **kwargs)
             elif config['provider'] == 'azure_ai_grok':
-                return await self._generate_azure_ai_grok(model_name, prompt, max_tokens, **kwargs)
+                return await self._generate_grok(model_name, prompt, max_tokens, **kwargs)
             else:
                 raise ValueError(f"Unknown provider: {config['provider']}")
                 
@@ -414,7 +413,7 @@ class UnifiedModelManager:
             completion_tokens=completion_tokens
         )
     
-    async def _generate_azure_ai_grok(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
+    async def _generate_grok(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
         """Generate response from Grok via Azure AI Services without artificial token limits."""
         if not self.grok_client:
             raise RuntimeError("Azure AI Grok client not initialized - check AZURE_AI_GROK3_MINI_API_KEY in .env")
@@ -443,8 +442,8 @@ class UnifiedModelManager:
             messages=prompt_messages,
             model=config['model_name'],  # Use grok-3-mini
             max_tokens=max_tokens,
-            temperature=config.get('temperature', 1.0),  # Grok example used 1.0
-            top_p=config.get('top_p', 1.0),  # Grok example used 1.0
+            temperature=config.get('temperature', 1.0),
+            top_p=config.get('top_p', 1.0),
             **kwargs
         )
         
@@ -484,7 +483,8 @@ class UnifiedModelManager:
             "total_cost": self.total_cost,
             "available_models": len(self.get_available_models()),
             "local_models": len([m for m in self.model_configs.values() if m['type'] == 'local']),
-            "remote_models": len([m for m in self.model_configs.values() if m['type'] == 'remote'])
+            "remote_models": len([m for m in self.model_configs.values() if m['type'] == 'remote']),
+            "tinyllama_removed": True
         }
     
     async def validate_all_models(self) -> Dict[str, Dict[str, Any]]:
@@ -526,8 +526,9 @@ class UnifiedModelManager:
         """Clean shutdown of model manager."""
         logger.info(f"Shutting down UnifiedModelManager...")
         logger.info(f"Final stats: {self.total_generations} generations, ${self.total_cost:.4f} total cost")
+        logger.info("TinyLlama was removed from this experiment")
 
 
 def create_unified_model_manager(config: Optional[Dict[str, Any]] = None) -> UnifiedModelManager:
-    """Factory function to create unified model manager with generous token limits."""
+    """Factory function to create unified model manager with generous token limits (no TinyLlama)."""
     return UnifiedModelManager(max_concurrent_models=2, config=config)

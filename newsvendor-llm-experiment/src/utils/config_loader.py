@@ -2,7 +2,7 @@
 Configuration Management for Newsvendor Experiment
 
 Loads and validates configuration from YAML files with intelligent defaults
-and environment variable overrides.
+and environment variable overrides. Updated to remove TinyLlama.
 """
 
 import os
@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     """
-    Load configuration from YAML files with intelligent defaults.
+    Load configuration from YAML files with intelligent defaults (no TinyLlama).
     
     Args:
         config_path: Optional path to main config file
@@ -25,7 +25,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
         Combined configuration dictionary
     """
     
-    # Default configuration
+    # Default configuration (REMOVED tinyllama:latest)
     default_config = {
         'game': {
             'selling_price': 100,
@@ -56,14 +56,9 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
             'export_formats': ['csv', 'json']
         },
         'models': {
-            'tinyllama:latest': {
-                'tier': 'ultra',
-                'token_limit': 256,
-                'temperature': 0.3,
-                'top_p': 0.8
-            },
+            # REMOVED tinyllama:latest from this configuration
             'qwen2:1.5b': {
-                'tier': 'ultra', 
+                'tier': 'ultra',
                 'token_limit': 256,
                 'temperature': 0.3,
                 'top_p': 0.8
@@ -103,6 +98,24 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
                 'token_limit': 512,
                 'temperature': 0.6,
                 'top_p': 0.95
+            },
+            'claude-sonnet-4-remote': {
+                'tier': 'premium',
+                'token_limit': 200000,
+                'temperature': 0.5,
+                'top_p': 0.9
+            },
+            'o3-remote': {
+                'tier': 'premium',
+                'token_limit': 100000,
+                'temperature': 1.0,
+                'top_p': 1.0
+            },
+            'grok-remote': {
+                'tier': 'premium',
+                'token_limit': 100000,
+                'temperature': 1.0,
+                'top_p': 1.0
             }
         }
     }
@@ -148,7 +161,7 @@ def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
     # Validate configuration
     validate_config(config)
     
-    logger.info("Configuration loaded successfully")
+    logger.info("Configuration loaded successfully (TinyLlama removed)")
     return config
 
 
@@ -283,6 +296,11 @@ def validate_config(config: Dict[str, Any]) -> None:
     # Validate model configurations
     models = config.get('models', {})
     
+    # Check that TinyLlama is not in the config
+    if 'tinyllama:latest' in models:
+        logger.warning("TinyLlama found in config - this model has been removed from the experiment")
+        del models['tinyllama:latest']
+    
     for model_name, model_config in models.items():
         if not isinstance(model_config, dict):
             raise ValueError(f"Model config for {model_name} must be a dictionary")
@@ -298,7 +316,7 @@ def validate_config(config: Dict[str, Any]) -> None:
         if not (0.0 <= top_p <= 1.0):
             raise ValueError(f"top_p for {model_name} must be between 0.0 and 1.0")
     
-    logger.info("Configuration validation passed")
+    logger.info("Configuration validation passed (TinyLlama excluded)")
 
 
 def save_config(config: Dict[str, Any], output_path: str) -> None:
@@ -320,18 +338,23 @@ def save_config(config: Dict[str, Any], output_path: str) -> None:
 
 
 def get_model_list(config: Dict[str, Any]) -> list[str]:
-    """Get list of available models from configuration."""
-    return list(config.get('models', {}).keys())
+    """Get list of available models from configuration (excluding TinyLlama)."""
+    models = list(config.get('models', {}).keys())
+    # Ensure TinyLlama is not in the list
+    return [m for m in models if m != 'tinyllama:latest']
 
 
 def get_model_config(config: Dict[str, Any], model_name: str) -> Dict[str, Any]:
     """Get configuration for a specific model."""
     models = config.get('models', {})
+    if model_name == 'tinyllama:latest':
+        logger.warning("TinyLlama has been removed from the experiment")
+        return {}
     return models.get(model_name, {})
 
 
 def create_default_config_files() -> None:
-    """Create default configuration files in the config directory."""
+    """Create default configuration files in the config directory (no TinyLlama)."""
     
     config_dir = Path('./config')
     config_dir.mkdir(exist_ok=True)
@@ -357,7 +380,26 @@ def create_default_config_files() -> None:
         if not file_path.exists():
             with open(file_path, 'w') as f:
                 yaml.dump(file_config, f, default_flow_style=False, indent=2)
-            logger.info(f"Created default config: {file_path}")
+            logger.info(f"Created default config: {file_path} (TinyLlama excluded)")
+
+
+def get_experiment_summary() -> Dict[str, Any]:
+    """Get a summary of the current experiment configuration."""
+    config = load_config()
+    models = get_model_list(config)
+    
+    return {
+        "total_models": len(models),
+        "models_included": models,
+        "models_excluded": ["tinyllama:latest"],
+        "models_added": ["grok-remote"],
+        "reflection_patterns": ["00", "01", "10", "11"],
+        "replications_per_condition": 20,
+        "total_negotiations": len(models) ** 2 * 4 * 20,
+        "estimated_duration_hours": len(models) ** 2 * 4 * 20 * 2 / 60 / 60,  # 2 minutes per negotiation
+        "tinyllama_removed": True,
+        "grok_added": True
+    }
 
 
 if __name__ == '__main__':
@@ -366,5 +408,12 @@ if __name__ == '__main__':
     
     # Test configuration loading
     config = load_config()
-    print("Configuration loaded successfully:")
+    print("Configuration loaded successfully (TinyLlama removed):")
     print(yaml.dump(config, default_flow_style=False, indent=2))
+    
+    # Print experiment summary
+    summary = get_experiment_summary()
+    print("\nExperiment Summary:")
+    print(f"  Models: {summary['total_models']} (TinyLlama removed)")
+    print(f"  Total negotiations: {summary['total_negotiations']:,}")
+    print(f"  Estimated duration: {summary['estimated_duration_hours']:.1f} hours")
