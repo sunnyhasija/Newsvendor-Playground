@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """
 src/core/unified_model_manager.py
-Unified Model Manager for Newsvendor Experiment - integrates with existing architecture
-Handles both local Ollama models and remote models (Claude, O3) with generous token limits
+Unified Model Manager for Newsvendor Experiment - now includes Azure AI Grok support
+Handles local Ollama models and remote models (Claude, O3, Azure AI Grok) with generous token limits
 """
 
 import asyncio
@@ -43,10 +43,10 @@ class GenerationResponse:
 
 
 class UnifiedModelManager:
-    """Manages both local and remote models with generous token limits for natural behavior."""
+    """Manages local and remote models including Azure AI Grok with generous token limits."""
     
     def __init__(self, max_concurrent_models: int = 2, config: Optional[Dict[str, Any]] = None):
-        """Initialize unified model manager."""
+        """Initialize unified model manager with Azure AI Grok support."""
         self.config = config or {}
         self.max_concurrent = max_concurrent_models
         
@@ -67,7 +67,7 @@ class UnifiedModelManager:
         self.total_cost = 0.0
         self.total_generations = 0
         
-        logger.info(f"Initialized UnifiedModelManager with {len(self.get_available_models())} models")
+        logger.info(f"Initialized UnifiedModelManager with {len(self.get_available_models())} models (including Azure AI Grok)")
     
     def _load_remote_configs(self) -> Dict[str, Dict[str, Any]]:
         """Load remote model configurations from environment."""
@@ -87,11 +87,20 @@ class UnifiedModelManager:
                 'cost_per_token': 0.000240,
                 'api_key': os.getenv('AZURE_o3_KEY'),
                 'base_url': os.getenv('AZURE_o3_BASE')
+            },
+            'grok-remote': {
+                'provider': 'azure_ai_grok',
+                'type': 'remote',
+                'cost_per_token': 0.000020,  # Estimated cost per token for Grok
+                'api_key': os.getenv('AZURE_AI_GROK3_MINI_API_KEY'),  # Updated env var name
+                'base_url': 'https://newsvendor-playground-resource.services.ai.azure.com/models',  # Updated endpoint
+                'api_version': '2024-05-01-preview',  # API version as specified
+                'model_name': 'grok-3-mini'  # Updated model name
             }
         }
     
     def _init_remote_clients(self):
-        """Initialize remote model clients."""
+        """Initialize remote model clients including Azure AI Grok."""
         # Claude (AWS Bedrock)
         try:
             import boto3
@@ -118,20 +127,38 @@ class UnifiedModelManager:
         except Exception as e:
             logger.warning(f"Failed to initialize Azure client: {e}")
             self.azure_client = None
+        
+        # Grok (Azure AI Services)
+        try:
+            from azure.ai.inference import ChatCompletionsClient
+            from azure.core.credentials import AzureKeyCredential
+            
+            if self.remote_configs['grok-remote']['api_key']:
+                self.grok_client = ChatCompletionsClient(
+                    endpoint=self.remote_configs['grok-remote']['base_url'],
+                    credential=AzureKeyCredential(self.remote_configs['grok-remote']['api_key']),
+                    api_version=self.remote_configs['grok-remote']['api_version']
+                )
+                logger.info("✅ Initialized Azure AI client for Grok")
+            else:
+                logger.warning("AZURE_AI_GROK3_MINI_API_KEY not found in environment")
+                self.grok_client = None
+        except Exception as e:
+            logger.warning(f"Failed to initialize Azure AI Grok client: {e}")
+            self.grok_client = None
     
     def _load_unified_configs(self) -> Dict[str, Dict[str, Any]]:
-        """Load unified model configurations with generous token budgets for natural behavior."""
+        """Load unified model configurations without restrictive token budgets."""
         
-        # All models get generous token budgets to express themselves naturally
+        # Base config without artificial token limits
         base_config = {
-            'max_tokens': 4000,      # 2x increase - let models think and express fully
             'temperature': 0.5,
             'top_p': 0.9
         }
         
         configs = {}
         
-        # Local models - all get generous limits
+        # Local models - no token limits, let them express naturally
         local_models = [
             "tinyllama:latest", "qwen2:1.5b", "gemma2:2b", "phi3:mini",
             "llama3.2:latest", "mistral:instruct", "qwen:7b", "qwen3:latest"
@@ -142,15 +169,26 @@ class UnifiedModelManager:
                 'provider': 'ollama',
                 'type': 'local',
                 'cost_per_token': 0.0,
+                'max_tokens': None,  # No limit - let models express naturally
                 **base_config
             }
         
-        # Remote models - even more generous for complex reasoning
+        # Remote models - no artificial limits, use service maximums
         for model_name, remote_config in self.remote_configs.items():
+            # Use service maximum limits, not artificial restrictions
+            if model_name == 'o3-remote':
+                max_tokens = None  # Let O3 use its full reasoning capacity
+            elif model_name == 'grok-remote':
+                max_tokens = None  # Let Grok express fully
+            elif model_name == 'claude-sonnet-4-remote':
+                max_tokens = None  # Let Claude use full capacity
+            else:
+                max_tokens = None
+            
             configs[model_name] = {
                 **remote_config,
                 **base_config,
-                'max_tokens': 5000 if model_name != 'o3-remote' else 8000  # O3 gets extra for reasoning
+                'max_tokens': max_tokens
             }
         
         return configs
@@ -178,7 +216,7 @@ class UnifiedModelManager:
         Args:
             model_name: Name of model to use
             prompt: Input prompt
-            max_tokens: Maximum tokens (for local/Claude)
+            max_tokens: Maximum tokens (for local/Claude/Grok)
             max_completion_tokens: Maximum completion tokens (for O3)
             reasoning_effort: Reasoning effort for O3 ('high', 'medium', 'low')
             **kwargs: Additional parameters
@@ -201,6 +239,8 @@ class UnifiedModelManager:
                 return await self._generate_claude(model_name, prompt, max_tokens, **kwargs)
             elif config['provider'] == 'azure':
                 return await self._generate_o3(model_name, prompt, max_completion_tokens, reasoning_effort, **kwargs)
+            elif config['provider'] == 'azure_ai_grok':
+                return await self._generate_azure_ai_grok(model_name, prompt, max_tokens, **kwargs)
             else:
                 raise ValueError(f"Unknown provider: {config['provider']}")
                 
@@ -215,9 +255,13 @@ class UnifiedModelManager:
             )
     
     async def _generate_ollama(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
-        """Generate response from Ollama model with generous token limits."""
+        """Generate response from Ollama model without token restrictions."""
         config = self.model_configs[model_name]
-        max_tokens = max_tokens or config.get('max_tokens', 4000)  # Default to generous limit
+        
+        # Don't impose artificial limits unless explicitly requested
+        if max_tokens is None:
+            # Let Ollama use its natural response length
+            max_tokens = -1  # Ollama uses -1 for unlimited
         
         # Prepare generation options
         options = {
@@ -258,12 +302,15 @@ class UnifiedModelManager:
         )
     
     async def _generate_claude(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
-        """Generate response from Claude via AWS Bedrock with generous token limits."""
+        """Generate response from Claude via AWS Bedrock without artificial token limits."""
         if not self.bedrock_client:
             raise RuntimeError("Bedrock client not initialized")
         
         config = self.model_configs[model_name]
-        max_tokens = max_tokens or config.get('max_tokens', 5000)  # Generous default
+        
+        # Use Claude's maximum (200k tokens) unless specifically limited
+        if max_tokens is None:
+            max_tokens = 200000  # Claude Sonnet 4's maximum
         
         import json
         
@@ -285,7 +332,7 @@ class UnifiedModelManager:
         # Make request to Bedrock
         response = await asyncio.to_thread(
             self.bedrock_client.invoke_model,
-            modelId="us.anthropic.claude-sonnet-4-20250514-v1:0",  # Your correct endpoint
+            modelId="us.anthropic.claude-sonnet-4-20250514-v1:0",
             body=json.dumps(request_body),
             contentType="application/json"
         )
@@ -316,13 +363,16 @@ class UnifiedModelManager:
         )
     
     async def _generate_o3(self, model_name: str, prompt: str, max_completion_tokens: Optional[int], reasoning_effort: Optional[str], **kwargs) -> GenerationResponse:
-        """Generate response from O3 via Azure OpenAI with very generous token limits."""
+        """Generate response from O3 via Azure OpenAI without artificial token limits."""
         if not self.azure_client:
             raise RuntimeError("Azure client not initialized")
         
         config = self.model_configs[model_name]
-        max_completion_tokens = max_completion_tokens or config.get('max_tokens', 8000)  # Very generous for O3
         reasoning_effort = reasoning_effort or 'high'
+        
+        # Don't artificially limit O3's reasoning capacity
+        if max_completion_tokens is None:
+            max_completion_tokens = 100000  # Let O3 reason fully
         
         start_time = time.time()
         
@@ -364,6 +414,65 @@ class UnifiedModelManager:
             completion_tokens=completion_tokens
         )
     
+    async def _generate_azure_ai_grok(self, model_name: str, prompt: str, max_tokens: Optional[int], **kwargs) -> GenerationResponse:
+        """Generate response from Grok via Azure AI Services without artificial token limits."""
+        if not self.grok_client:
+            raise RuntimeError("Azure AI Grok client not initialized - check AZURE_AI_GROK3_MINI_API_KEY in .env")
+        
+        config = self.model_configs[model_name]
+        
+        # Don't artificially limit Grok unless explicitly requested
+        if max_tokens is None:
+            # Let Grok express itself fully - use a very high limit
+            max_tokens = 100000  # Effectively unlimited for most responses
+        
+        start_time = time.time()
+        
+        # Import Azure AI message types
+        from azure.ai.inference.models import UserMessage, SystemMessage
+        
+        # Prepare messages in Azure AI format
+        prompt_messages = [
+            SystemMessage(content="You are a helpful AI assistant in a negotiation scenario."),
+            UserMessage(content=prompt)
+        ]
+        
+        # Make request to Azure AI Grok
+        response = await asyncio.to_thread(
+            self.grok_client.complete,
+            messages=prompt_messages,
+            model=config['model_name'],  # Use grok-3-mini
+            max_tokens=max_tokens,
+            temperature=config.get('temperature', 1.0),  # Grok example used 1.0
+            top_p=config.get('top_p', 1.0),  # Grok example used 1.0
+            **kwargs
+        )
+        
+        response_text = response.choices[0].message.content
+        
+        # Azure AI provides token usage information
+        tokens_used = getattr(response.usage, 'total_tokens', 0)
+        if not tokens_used:
+            # Fallback: estimate tokens if not provided
+            tokens_used = len(response_text.split()) * 1.3  # Rough estimate
+        
+        generation_time = time.time() - start_time
+        
+        # Calculate cost
+        cost = tokens_used * config['cost_per_token']
+        self.total_cost += cost
+        self.total_generations += 1
+        
+        return GenerationResponse(
+            text=response_text,
+            tokens_used=int(tokens_used),
+            generation_time=generation_time,
+            success=True,
+            model_name=model_name,
+            timestamp=time.time(),
+            cost_estimate=cost
+        )
+    
     def get_total_cost(self) -> float:
         """Get total cost of all remote model calls."""
         return self.total_cost
@@ -379,7 +488,7 @@ class UnifiedModelManager:
         }
     
     async def validate_all_models(self) -> Dict[str, Dict[str, Any]]:
-        """Validate that all models work with a simple test prompt and generous token limits."""
+        """Validate that all models work with a simple test prompt without token restrictions."""
         test_prompt = "You are negotiating. Say only: I offer $50"
         results = {}
         
@@ -387,11 +496,11 @@ class UnifiedModelManager:
             try:
                 if model_name == 'o3-remote':
                     response = await self.generate_response(
-                        model_name, test_prompt, max_completion_tokens=8000, reasoning_effort='high'
+                        model_name, test_prompt, max_completion_tokens=None, reasoning_effort='high'
                     )
                 else:
                     response = await self.generate_response(
-                        model_name, test_prompt, max_tokens=4000
+                        model_name, test_prompt, max_tokens=None  # No token limit
                     )
                 
                 results[model_name] = {

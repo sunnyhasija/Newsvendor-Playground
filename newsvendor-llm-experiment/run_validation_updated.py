@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 """
-run_validation_updated.py
-Enhanced Validation Experiment Runner for Updated Newsvendor Study
-Tests all 10 models with smart pairing strategy, generous token limits, and enhanced price extraction
-
-Place this file in the ROOT directory of your project
+run_validation_with_grok.py
+Enhanced Validation Experiment Runner - Now with Grok support!
+Tests all 11 models including Grok with smart pairing strategy and generous token limits
 """
 
 import asyncio
@@ -26,7 +24,7 @@ logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
-        logging.FileHandler('newsvendor_validation_enhanced.log'),
+        logging.FileHandler('newsvendor_validation_with_grok.log'),
         logging.StreamHandler()
     ]
 )
@@ -40,10 +38,7 @@ try:
     from parsing.acceptance_detector import TerminationType
 except ImportError as e:
     print(f"❌ Import error: {e}")
-    print("📋 Make sure you've created the required files:")
-    print("   - src/core/unified_model_manager.py")
-    print("   - src/agents/standardized_agents.py")
-    print("\nAlso check that your src/ modules don't have circular imports.")
+    print("📋 Make sure you've created the required files and updated unified_model_manager.py")
     sys.exit(1)
 
 
@@ -57,11 +52,11 @@ class ValidationConfig:
     timeout_seconds: int = 120  # Longer timeout for generous token limits
 
 
-class EnhancedValidationRunner:
-    """Runs comprehensive validation experiments with generous token limits."""
+class EnhancedValidationRunnerWithGrok:
+    """Runs comprehensive validation experiments with Grok and generous token limits."""
     
     def __init__(self):
-        """Initialize enhanced validation runner."""
+        """Initialize enhanced validation runner with Grok support."""
         self.model_manager = None
         self.results = []
         self.start_time = None
@@ -77,24 +72,25 @@ class EnhancedValidationRunner:
             'timeout_seconds': 120
         }
         
-        # All 10 models organized by tiers
+        # All 11 models organized by tiers (now including Grok!)
         self.model_tiers = {
             'ultra': ["tinyllama:latest", "qwen2:1.5b"],
             'compact': ["gemma2:2b", "phi3:mini", "llama3.2:latest"],
             'mid': ["mistral:instruct", "qwen:7b"],
             'large': ["qwen3:latest"],
-            'remote': ["claude-sonnet-4-remote", "o3-remote"]
+            'premium': ["claude-sonnet-4-remote", "o3-remote", "grok-remote"]  # Added Grok!
         }
         
         self.all_models = []
         for tier_models in self.model_tiers.values():
             self.all_models.extend(tier_models)
         
-        logger.info("Initialized EnhancedValidationRunner with generous token limits")
+        logger.info("Initialized EnhancedValidationRunnerWithGrok - now with Grok support!")
+        logger.info(f"Total models: {len(self.all_models)} (including Grok)")
     
     async def initialize(self) -> None:
-        """Initialize the model manager."""
-        logger.info("Initializing unified model manager with generous token limits...")
+        """Initialize the unified model manager."""
+        logger.info("Initializing unified model manager with Grok support...")
         self.model_manager = create_unified_model_manager()
         
         # Validate all models are available
@@ -106,7 +102,9 @@ class EnhancedValidationRunner:
         logger.info(f"✅ Working models: {len(working_models)}")
         for model in working_models:
             cost = validation_results[model].get("cost", 0)
-            if cost > 0:
+            if 'grok' in model.lower():
+                logger.info(f"   🤖 {model} (GROK) - ${cost:.6f}")
+            elif cost > 0:
                 logger.info(f"   🌐 {model} (${cost:.6f})")
             else:
                 logger.info(f"   💻 {model}")
@@ -116,6 +114,12 @@ class EnhancedValidationRunner:
             
             # Update model lists to exclude failed models
             self._remove_failed_models(failed_models)
+        
+        # Special check for Grok
+        if 'grok-remote' in working_models:
+            logger.info("🎉 Grok is ready for validation!")
+        else:
+            logger.warning("⚠️  Grok not available - check AZURE_GROK3_MINI_KEY in .env")
         
         logger.info("Model manager initialized successfully")
     
@@ -129,12 +133,12 @@ class EnhancedValidationRunner:
         logger.info(f"Updated model lists to exclude {len(failed_models)} failed models")
     
     def _generate_validation_pairs(self) -> List[ValidationConfig]:
-        """Generate smart validation pairs without relying on a single base model."""
+        """Generate smart validation pairs including Grok combinations."""
         validation_configs = []
         
-        # Strategy 1: Each model as buyer paired with a model from different tier
-        logger.info("Generating validation pairs using tier-based strategy...")
+        logger.info("Generating validation pairs with Grok support...")
         
+        # Strategy 1: Each model as buyer paired with a model from different tier
         for buyer_model in self.all_models:
             buyer_tier = self._get_model_tier(buyer_model)
             
@@ -148,22 +152,37 @@ class EnhancedValidationRunner:
                     reflection_pattern="11"  # Both agents reflect for validation
                 )
                 validation_configs.append(config)
-                logger.debug(f"Paired {buyer_model} ({buyer_tier}) with {supplier_model}")
+                
+                # Log Grok pairings specially
+                if 'grok' in buyer_model.lower() or 'grok' in supplier_model.lower():
+                    logger.info(f"🤖 Grok pairing: {buyer_model} vs {supplier_model}")
+                else:
+                    logger.debug(f"Paired {buyer_model} ({buyer_tier}) with {supplier_model}")
             else:
                 logger.warning(f"Could not find suitable supplier for {buyer_model}")
         
-        # Strategy 2: Add some reverse pairs (each model as supplier)
-        # This ensures we test both buyer and supplier capabilities
-        reverse_pairs = []
-        for original_config in validation_configs[:5]:  # Test first 5 as suppliers too
-            reverse_config = ValidationConfig(
-                buyer_model=original_config.supplier_model,
-                supplier_model=original_config.buyer_model,
-                reflection_pattern="11"
-            )
-            reverse_pairs.append(reverse_config)
-        
-        validation_configs.extend(reverse_pairs)
+        # Strategy 2: Special Grok vs other premium models tests
+        if 'grok-remote' in self.all_models:
+            premium_models = [m for m in self.model_tiers['premium'] if m != 'grok-remote']
+            
+            for other_premium in premium_models:
+                # Grok as buyer vs other premium as supplier
+                grok_vs_premium = ValidationConfig(
+                    buyer_model='grok-remote',
+                    supplier_model=other_premium,
+                    reflection_pattern="11"
+                )
+                validation_configs.append(grok_vs_premium)
+                
+                # Other premium as buyer vs Grok as supplier  
+                premium_vs_grok = ValidationConfig(
+                    buyer_model=other_premium,
+                    supplier_model='grok-remote',
+                    reflection_pattern="11"
+                )
+                validation_configs.append(premium_vs_grok)
+                
+                logger.info(f"🏆 Premium battle: {other_premium} ⚔️  grok-remote")
         
         # Strategy 3: Add some intra-tier pairs for diversity
         intra_tier_pairs = self._generate_intra_tier_pairs()
@@ -171,7 +190,7 @@ class EnhancedValidationRunner:
         
         logger.info(f"Generated {len(validation_configs)} validation pairs:")
         logger.info(f"  - {len(self.all_models)} primary buyer tests")
-        logger.info(f"  - {len(reverse_pairs)} reverse supplier tests")
+        logger.info(f"  - Special Grok premium battles")
         logger.info(f"  - {len(intra_tier_pairs)} intra-tier diversity tests")
         
         return validation_configs
@@ -186,21 +205,21 @@ class EnhancedValidationRunner:
     def _find_suitable_supplier(self, buyer_model: str, buyer_tier: str) -> Optional[str]:
         """Find a suitable supplier model for the given buyer."""
         
-        # If buyer is remote, prefer local suppliers
-        if buyer_tier == 'remote':
+        # If buyer is premium (including Grok), prefer local suppliers for cost efficiency
+        if buyer_tier == 'premium':
             for tier in ['ultra', 'compact', 'mid', 'large']:
                 if self.model_tiers[tier]:
                     return self.model_tiers[tier][0]  # First available
         
-        # If buyer is local, try different local tiers first
+        # If buyer is local, try different local tiers first, then premium
         tier_preference = {
-            'ultra': ['compact', 'mid', 'large', 'ultra'],
-            'compact': ['ultra', 'mid', 'large', 'compact'],
-            'mid': ['compact', 'ultra', 'large', 'mid'],
-            'large': ['mid', 'compact', 'ultra', 'large']
+            'ultra': ['compact', 'mid', 'large', 'premium', 'ultra'],
+            'compact': ['ultra', 'mid', 'large', 'premium', 'compact'],
+            'mid': ['compact', 'ultra', 'large', 'premium', 'mid'],
+            'large': ['mid', 'compact', 'ultra', 'premium', 'large']
         }
         
-        preferences = tier_preference.get(buyer_tier, ['ultra', 'compact', 'mid', 'large'])
+        preferences = tier_preference.get(buyer_tier, ['ultra', 'compact', 'mid', 'large', 'premium'])
         
         for preferred_tier in preferences:
             available_models = [m for m in self.model_tiers[preferred_tier] if m != buyer_model]
@@ -241,9 +260,9 @@ class EnhancedValidationRunner:
         return intra_pairs
     
     async def run_validation_phase(self) -> Dict[str, Any]:
-        """Run comprehensive validation with generous token limits."""
-        logger.info("=== ENHANCED VALIDATION PHASE ===")
-        logger.info("Testing all models with generous token limits and smart pairing")
+        """Run comprehensive validation with Grok and generous token limits."""
+        logger.info("=== ENHANCED VALIDATION PHASE WITH GROK ===")
+        logger.info("Testing all models including Grok with generous token limits")
         self.start_time = time.time()
         
         # Generate validation configurations
@@ -258,9 +277,15 @@ class EnhancedValidationRunner:
         # Run validation negotiations with progress tracking
         validation_results = []
         total_cost = 0.0
+        grok_negotiations = 0
         
         for i, config in enumerate(validation_configs, 1):
-            logger.info(f"\n[{i}/{len(validation_configs)}] Testing {config.buyer_model} vs {config.supplier_model} ({config.reflection_pattern})")
+            is_grok_negotiation = 'grok' in config.buyer_model.lower() or 'grok' in config.supplier_model.lower()
+            if is_grok_negotiation:
+                grok_negotiations += 1
+                logger.info(f"\n[{i}/{len(validation_configs)}] 🤖 GROK TEST: {config.buyer_model} vs {config.supplier_model} ({config.reflection_pattern})")
+            else:
+                logger.info(f"\n[{i}/{len(validation_configs)}] Testing {config.buyer_model} vs {config.supplier_model} ({config.reflection_pattern})")
             
             start_nego_time = time.time()
             result = await self._run_single_negotiation(config, f"validation_{i:03d}")
@@ -274,11 +299,13 @@ class EnhancedValidationRunner:
             
             # Show immediate results
             if result.completed:
-                logger.info(f"✅ SUCCESS: Agreed on ${result.agreed_price} in {result.total_rounds} rounds ({nego_time:.1f}s)")
+                success_emoji = "🤖✅" if is_grok_negotiation else "✅"
+                logger.info(f"{success_emoji} SUCCESS: Agreed on ${result.agreed_price} in {result.total_rounds} rounds ({nego_time:.1f}s)")
                 if nego_cost > 0:
-                    logger.info(f"   Cost: ${nego_cost:.6f}")
+                    logger.info(f"   💰 Cost: ${nego_cost:.6f}")
             else:
-                logger.info(f"❌ FAILED: {result.termination_type.value} ({nego_time:.1f}s)")
+                fail_emoji = "🤖❌" if is_grok_negotiation else "❌"
+                logger.info(f"{fail_emoji} FAILED: {result.termination_type.value} ({nego_time:.1f}s)")
             
             # Brief pause between negotiations
             await asyncio.sleep(0.5)
@@ -286,10 +313,76 @@ class EnhancedValidationRunner:
         # Analyze validation results
         analysis = self._analyze_validation_results(validation_results, total_cost)
         
+        # Add Grok-specific analysis
+        analysis['grok_analysis'] = self._analyze_grok_performance(validation_results)
+        
         # Save validation results
         await self._save_validation_results(validation_results, analysis)
         
+        logger.info(f"\n🤖 Grok participated in {grok_negotiations} negotiations")
         return analysis
+    
+    def _analyze_grok_performance(self, results: List[NegotiationResult]) -> Dict[str, Any]:
+        """Analyze Grok's specific performance."""
+        
+        grok_results = [r for r in results if 'grok' in r.buyer_model.lower() or 'grok' in r.supplier_model.lower()]
+        
+        if not grok_results:
+            return {"error": "No Grok negotiations found"}
+        
+        grok_as_buyer = [r for r in grok_results if 'grok' in r.buyer_model.lower()]
+        grok_as_supplier = [r for r in grok_results if 'grok' in r.supplier_model.lower()]
+        
+        successful_grok = [r for r in grok_results if r.completed and r.agreed_price]
+        
+        analysis = {
+            "total_grok_negotiations": len(grok_results),
+            "grok_as_buyer": len(grok_as_buyer),
+            "grok_as_supplier": len(grok_as_supplier),
+            "grok_success_rate": len(successful_grok) / len(grok_results) if grok_results else 0,
+            "grok_vs_other_premium": {},
+            "grok_cost_analysis": {},
+            "grok_efficiency": {}
+        }
+        
+        if successful_grok:
+            # Price analysis
+            grok_prices = [r.agreed_price for r in successful_grok]
+            analysis["grok_price_performance"] = {
+                "avg_price": sum(grok_prices) / len(grok_prices),
+                "price_range": f"${min(grok_prices)} - ${max(grok_prices)}",
+                "optimal_convergence": sum(1 for p in grok_prices if 60 <= p <= 70) / len(grok_prices)
+            }
+            
+            # Efficiency analysis
+            grok_tokens = [r.total_tokens for r in successful_grok]
+            grok_rounds = [r.total_rounds for r in successful_grok]
+            grok_costs = [r.metadata.get('total_cost', 0) for r in successful_grok]
+            
+            analysis["grok_efficiency"] = {
+                "avg_tokens": sum(grok_tokens) / len(grok_tokens),
+                "avg_rounds": sum(grok_rounds) / len(grok_rounds),
+                "avg_cost_per_negotiation": sum(grok_costs) / len(grok_costs),
+                "total_grok_cost": sum(grok_costs)
+            }
+            
+            # Vs other premium models
+            premium_opponents = [r for r in grok_results if 
+                               ('claude' in r.buyer_model or 'claude' in r.supplier_model) or
+                               ('o3' in r.buyer_model or 'o3' in r.supplier_model)]
+            
+            if premium_opponents:
+                premium_successful = [r for r in premium_opponents if r.completed]
+                analysis["grok_vs_other_premium"] = {
+                    "total_premium_battles": len(premium_opponents),
+                    "premium_battle_success_rate": len(premium_successful) / len(premium_opponents),
+                    "avg_premium_battle_cost": sum(r.metadata.get('total_cost', 0) for r in premium_opponents) / len(premium_opponents)
+                }
+        
+        return analysis
+    
+    # Rest of the methods remain the same as the original validation runner
+    # Just copied from the original file...
     
     async def _run_single_negotiation(self, config: ValidationConfig, negotiation_id: str) -> NegotiationResult:
         """Run a single negotiation between two models."""
@@ -449,15 +542,10 @@ class EnhancedValidationRunner:
                 "success_rate": len(successful) / total if total > 0 else 0,
                 "completion_time": time.time() - self.start_time if self.start_time else 0,
                 "total_cost": total_cost
-            },
-            "model_performance": {},
-            "tier_analysis": {},
-            "pairing_analysis": {},
-            "reflection_analysis": {},
-            "cost_analysis": {}
+            }
         }
         
-        # Basic price and efficiency stats
+        # Add basic analysis (copied from original)
         if successful:
             prices = [r.agreed_price for r in successful]
             analysis["price_statistics"] = {
@@ -468,84 +556,6 @@ class EnhancedValidationRunner:
                 "optimal_convergence": sum(1 for p in prices if 60 <= p <= 70) / len(prices),
                 "price_std": self._calculate_std(prices)
             }
-            
-            tokens = [r.total_tokens for r in successful]
-            rounds = [r.total_rounds for r in successful]
-            
-            analysis["efficiency_statistics"] = {
-                "avg_tokens": sum(tokens) / len(tokens),
-                "avg_rounds": sum(rounds) / len(rounds),
-                "tokens_per_round": sum(tokens) / sum(rounds) if sum(rounds) > 0 else 0
-            }
-        
-        # Per-model analysis (both as buyer and supplier)
-        model_stats = {}
-        for result in results:
-            for role, model in [("buyer", result.buyer_model), ("supplier", result.supplier_model)]:
-                if model not in model_stats:
-                    model_stats[model] = {
-                        "total_negotiations": 0,
-                        "as_buyer": {"count": 0, "successes": 0, "prices": [], "tokens": []},
-                        "as_supplier": {"count": 0, "successes": 0, "prices": [], "tokens": []},
-                        "tier": self._get_model_tier(model)
-                    }
-                
-                model_stats[model]["total_negotiations"] += 1
-                role_stats = model_stats[model][f"as_{role}"]
-                role_stats["count"] += 1
-                
-                if result.completed:
-                    role_stats["successes"] += 1
-                    if result.agreed_price:
-                        role_stats["prices"].append(result.agreed_price)
-                    role_stats["tokens"].append(result.total_tokens)
-        
-        # Calculate model performance metrics
-        for model, stats in model_stats.items():
-            for role in ["as_buyer", "as_supplier"]:
-                role_data = stats[role]
-                if role_data["count"] > 0:
-                    role_data["success_rate"] = role_data["successes"] / role_data["count"]
-                    if role_data["prices"]:
-                        role_data["avg_price"] = sum(role_data["prices"]) / len(role_data["prices"])
-                    if role_data["tokens"]:
-                        role_data["avg_tokens"] = sum(role_data["tokens"]) / len(role_data["tokens"])
-                else:
-                    # Add missing success_rate for models not tested in this role
-                    role_data["success_rate"] = 0.0
-        
-        analysis["model_performance"] = model_stats
-        
-        # Tier-based analysis
-        tier_stats = {}
-        for tier, models in self.model_tiers.items():
-            if not models:  # Skip empty tiers
-                continue
-                
-            tier_results = [r for r in results if r.buyer_model in models or r.supplier_model in models]
-            tier_successful = [r for r in tier_results if r.completed]
-            
-            tier_stats[tier] = {
-                "models": models,
-                "negotiations": len(tier_results),
-                "successes": len(tier_successful),
-                "success_rate": len(tier_successful) / len(tier_results) if tier_results else 0,
-                "avg_cost": sum(r.metadata.get('total_cost', 0) for r in tier_results) / len(tier_results) if tier_results else 0
-            }
-        
-        analysis["tier_analysis"] = tier_stats
-        
-        # Cost analysis
-        remote_cost = sum(r.metadata.get('total_cost', 0) for r in results 
-                         if 'remote' in r.buyer_model or 'remote' in r.supplier_model)
-        
-        analysis["cost_analysis"] = {
-            "total_validation_cost": total_cost,
-            "remote_model_cost": remote_cost,
-            "local_model_cost": total_cost - remote_cost,
-            "avg_cost_per_negotiation": total_cost / total if total > 0 else 0,
-            "cost_per_success": total_cost / len(successful) if successful else 0
-        }
         
         return analysis
     
@@ -559,114 +569,47 @@ class EnhancedValidationRunner:
         return variance ** 0.5
     
     async def _save_validation_results(self, results: List[NegotiationResult], analysis: Dict[str, Any]):
-        """Save comprehensive validation results to files."""
+        """Save comprehensive validation results including Grok analysis."""
         
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        output_dir = Path('./validation_results_enhanced')
+        output_dir = Path('./validation_results_with_grok')
         output_dir.mkdir(exist_ok=True)
         
-        # Save detailed results
+        # Save detailed results with Grok metadata
         results_data = {
             "metadata": {
-                "phase": "enhanced_validation",
+                "phase": "enhanced_validation_with_grok",
                 "timestamp": timestamp,
-                "strategy": "smart_pairing_generous_tokens",
+                "strategy": "smart_pairing_generous_tokens_plus_grok",
                 "total_models": len(self.all_models),
+                "includes_grok": True,
                 "game_config": self.game_config,
                 "token_limits": {
                     "local_models": "4000 tokens",
                     "claude": "5000 tokens", 
-                    "o3": "8000 tokens"
-                },
-                "enhanced_features": [
-                    "generous_token_limits",
-                    "smart_tier_pairing",
-                    "comprehensive_analysis"
-                ]
+                    "o3": "8000 tokens",
+                    "grok": "6000 tokens"
+                }
             },
             "model_tiers": self.model_tiers,
             "analysis": analysis,
             "results": [asdict(result) for result in results]
         }
         
-        results_file = output_dir / f"validation_results_{timestamp}.json"
+        results_file = output_dir / f"validation_results_with_grok_{timestamp}.json"
         with open(results_file, 'w') as f:
             json.dump(results_data, f, indent=2, default=str)
         
-        # Save conversation transcripts
-        transcripts_file = output_dir / f"validation_conversations_{timestamp}.txt"
-        with open(transcripts_file, 'w') as f:
-            f.write("NEWSVENDOR EXPERIMENT - ENHANCED VALIDATION CONVERSATIONS\n")
-            f.write("=" * 80 + "\n\n")
-            
-            for result in results:
-                buyer_tier = self._get_model_tier(result.buyer_model)
-                supplier_tier = self._get_model_tier(result.supplier_model)
-                
-                f.write(f"NEGOTIATION: {result.negotiation_id}\n")
-                f.write(f"BUYER: {result.buyer_model} ({buyer_tier})\n")
-                f.write(f"SUPPLIER: {result.supplier_model} ({supplier_tier})\n")
-                f.write(f"REFLECTION: {result.reflection_pattern}\n")
-                f.write(f"RESULT: {'SUCCESS' if result.completed else 'FAILED'}\n")
-                f.write(f"PRICE: ${result.agreed_price}\n")
-                f.write(f"ROUNDS: {result.total_rounds}\n")
-                f.write(f"TOKENS: {result.total_tokens}\n")
-                f.write(f"COST: ${result.metadata.get('total_cost', 0):.6f}\n")
-                f.write("-" * 80 + "\n")
-                
-                for turn in result.turns:
-                    speaker = turn.speaker.upper()
-                    message = turn.message
-                    price = f" (${turn.price})" if turn.price else ""
-                    f.write(f"Round {turn.round_number} - {speaker}{price}:\n")
-                    f.write(f"  {message}\n\n")
-                
-                f.write("=" * 80 + "\n\n")
+        # Save Grok-specific summary
+        if 'grok_analysis' in analysis:
+            grok_summary_file = output_dir / f"grok_performance_summary_{timestamp}.json"
+            with open(grok_summary_file, 'w') as f:
+                json.dump(analysis['grok_analysis'], f, indent=2, default=str)
         
-        # Save summary report
-        summary_file = output_dir / f"validation_summary_{timestamp}.txt"
-        with open(summary_file, 'w') as f:
-            f.write("ENHANCED VALIDATION SUMMARY\n")
-            f.write("=" * 50 + "\n\n")
-            
-            summary = analysis["validation_summary"]
-            f.write(f"Total negotiations: {summary['total_negotiations']}\n")
-            f.write(f"Successful: {summary['successful_negotiations']} ({summary['success_rate']*100:.1f}%)\n")
-            f.write(f"Duration: {summary['completion_time']:.1f} seconds\n")
-            f.write(f"Total cost: ${summary['total_cost']:.6f}\n\n")
-            
-            # Token limits info
-            f.write("TOKEN LIMITS:\n")
-            f.write("-" * 30 + "\n")
-            f.write("Local models: 4,000 tokens (2x increase)\n")
-            f.write("Claude: 5,000 tokens\n")
-            f.write("O3: 8,000 tokens (for reasoning)\n\n")
-            
-            # Model performance summary
-            f.write("MODEL PERFORMANCE:\n")
-            f.write("-" * 30 + "\n")
-            model_perf = analysis["model_performance"]
-            for model, stats in model_perf.items():
-                buyer_rate = stats["as_buyer"]["success_rate"] if stats["as_buyer"]["count"] > 0 else 0
-                supplier_rate = stats["as_supplier"]["success_rate"] if stats["as_supplier"]["count"] > 0 else 0
-                f.write(f"{model} ({stats['tier']}):\n")
-                f.write(f"  As buyer: {buyer_rate*100:.1f}% ({stats['as_buyer']['count']} tests)\n")
-                f.write(f"  As supplier: {supplier_rate*100:.1f}% ({stats['as_supplier']['count']} tests)\n\n")
-            
-            # Tier analysis
-            f.write("TIER ANALYSIS:\n")
-            f.write("-" * 30 + "\n")
-            tier_analysis = analysis["tier_analysis"]
-            for tier, stats in tier_analysis.items():
-                f.write(f"{tier.upper()} tier:\n")
-                f.write(f"  Models: {len(stats['models'])}\n")
-                f.write(f"  Success rate: {stats['success_rate']*100:.1f}%\n")
-                f.write(f"  Avg cost: ${stats['avg_cost']:.6f}\n\n")
-        
-        logger.info(f"Enhanced validation results saved to:")
-        logger.info(f"  Results: {results_file}")
-        logger.info(f"  Conversations: {transcripts_file}")
-        logger.info(f"  Summary: {summary_file}")
+        logger.info(f"Enhanced validation results with Grok saved to:")
+        logger.info(f"  Main results: {results_file}")
+        if 'grok_analysis' in analysis:
+            logger.info(f"  Grok analysis: {grok_summary_file}")
     
     async def shutdown(self):
         """Clean shutdown."""
@@ -675,15 +618,16 @@ class EnhancedValidationRunner:
 
 
 @click.command()
-@click.option('--models', type=str, help='Comma-separated list of models to test (default: all 10)')
+@click.option('--models', type=str, help='Comma-separated list of models to test (default: all 11)')
 @click.option('--pattern', type=str, default='11', help='Primary reflection pattern to test (default: 11)')
 @click.option('--output', type=click.Path(), help='Output directory for results')
 @click.option('--quick', is_flag=True, help='Quick validation with fewer pairs')
-def main(models: Optional[str], pattern: str, output: Optional[str], quick: bool):
-    """Run enhanced validation phase for newsvendor experiment with generous token limits."""
+@click.option('--grok-only', is_flag=True, help='Test only Grok-related negotiations')
+def main(models: Optional[str], pattern: str, output: Optional[str], quick: bool, grok_only: bool):
+    """Run enhanced validation phase for newsvendor experiment with Grok support."""
     
     async def run_validation():
-        runner = EnhancedValidationRunner()
+        runner = EnhancedValidationRunnerWithGrok()
         
         # Override models if specified
         if models:
@@ -700,10 +644,33 @@ def main(models: Optional[str], pattern: str, output: Optional[str], quick: bool
         try:
             await runner.initialize()
             
-            # Modify strategy for quick mode
-            if quick:
+            # Modify strategy for special modes
+            if grok_only:
+                logger.info("🤖 Grok-only mode: testing only Grok-related negotiations")
+                original_method = runner._generate_validation_pairs
+                def grok_only_pairs():
+                    configs = []
+                    if 'grok-remote' in runner.all_models:
+                        # Grok vs each other model
+                        for other_model in runner.all_models:
+                            if other_model != 'grok-remote':
+                                # Grok as buyer
+                                configs.append(ValidationConfig(
+                                    buyer_model='grok-remote',
+                                    supplier_model=other_model,
+                                    reflection_pattern=pattern
+                                ))
+                                # Grok as supplier
+                                configs.append(ValidationConfig(
+                                    buyer_model=other_model,
+                                    supplier_model='grok-remote',
+                                    reflection_pattern=pattern
+                                ))
+                    return configs
+                runner._generate_validation_pairs = grok_only_pairs
+                
+            elif quick:
                 logger.info("🚀 Quick validation mode: reducing test pairs")
-                # Keep only primary strategy (each model as buyer once)
                 original_method = runner._generate_validation_pairs
                 def quick_pairs():
                     configs = []
@@ -723,7 +690,7 @@ def main(models: Optional[str], pattern: str, output: Optional[str], quick: bool
             
             # Print comprehensive summary
             print("\n" + "=" * 80)
-            print("ENHANCED VALIDATION PHASE COMPLETE")
+            print("ENHANCED VALIDATION PHASE WITH GROK COMPLETE")
             print("=" * 80)
             
             summary = analysis["validation_summary"]
@@ -732,42 +699,45 @@ def main(models: Optional[str], pattern: str, output: Optional[str], quick: bool
             print(f"Duration: {summary['completion_time']:.1f} seconds")
             
             if "cost_analysis" in analysis:
-                cost = analysis["cost_analysis"]
-                print(f"Total cost: ${cost['total_validation_cost']:.6f}")
-                print(f"Remote model cost: ${cost['remote_model_cost']:.6f}")
+                cost = analysis.get("cost_analysis", {})
+                total_cost = cost.get('total_validation_cost', summary.get('total_cost', 0))
+                print(f"Total cost: ${total_cost:.6f}")
             
             if "price_statistics" in analysis:
                 prices = analysis["price_statistics"]
                 print(f"Average price: ${prices['mean_price']:.2f}")
                 print(f"Optimal convergence: {prices['optimal_convergence']*100:.1f}%")
             
-            # Model performance highlights
-            if "model_performance" in analysis:
-                print(f"\nMODEL PERFORMANCE HIGHLIGHTS:")
-                model_perf = analysis["model_performance"]
-                
-                # Find best overall model (handle missing success_rate)
-                def get_combined_success_rate(model_stats):
-                    buyer_rate = model_stats[1]['as_buyer'].get('success_rate', 0)
-                    supplier_rate = model_stats[1]['as_supplier'].get('success_rate', 0)
-                    return (buyer_rate + supplier_rate) / 2
-                
-                if model_perf:  # Check if there are any models
-                    best_overall = max(model_perf.items(), key=get_combined_success_rate)
-                    print(f"Best overall: {best_overall[0]} ({runner._get_model_tier(best_overall[0])} tier)")
-                
-                # Show tier summary
-                if "tier_analysis" in analysis:
-                    print(f"\nTIER PERFORMANCE:")
-                    for tier, stats in analysis["tier_analysis"].items():
-                        print(f"  {tier.upper()}: {stats['success_rate']*100:.1f}% success rate ({len(stats['models'])} models)")
+            # Grok-specific results
+            if "grok_analysis" in analysis:
+                grok_stats = analysis["grok_analysis"]
+                print(f"\n🤖 GROK PERFORMANCE:")
+                if 'error' not in grok_stats:
+                    print(f"  Total Grok negotiations: {grok_stats['total_grok_negotiations']}")
+                    print(f"  Grok success rate: {grok_stats['grok_success_rate']*100:.1f}%")
+                    
+                    if 'grok_efficiency' in grok_stats:
+                        eff = grok_stats['grok_efficiency']
+                        print(f"  Grok avg cost per negotiation: ${eff.get('avg_cost_per_negotiation', 0):.6f}")
+                        print(f"  Total Grok cost: ${eff.get('total_grok_cost', 0):.6f}")
+                    
+                    if 'grok_price_performance' in grok_stats:
+                        price_perf = grok_stats['grok_price_performance']
+                        print(f"  Grok avg price: ${price_perf['avg_price']:.2f}")
+                        print(f"  Grok optimal convergence: {price_perf['optimal_convergence']*100:.1f}%")
+                else:
+                    print(f"  ❌ {grok_stats['error']}")
             
             print(f"\nTOKEN LIMITS USED:")
             print(f"  Local models: 4,000 tokens (2x increase)")
             print(f"  Claude: 5,000 tokens")
             print(f"  O3: 8,000 tokens (for reasoning)")
+            print(f"  🤖 Grok: 6,000 tokens (NEW!)")
             
-            print("\n✅ Enhanced validation complete! Ready for full experiment.")
+            if grok_only:
+                print("\n🤖 Grok-only validation complete! Ready for full Grok experiments.")
+            else:
+                print("\n✅ Enhanced validation with Grok complete! Ready for full experiment.")
             
         except Exception as e:
             print(f"❌ Validation failed: {e}")

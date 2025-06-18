@@ -33,6 +33,8 @@ boto3 = "^1.34.0"          # AWS Bedrock for Claude
 aiohttp = "^3.9.0"         # Async HTTP for Azure APIs
 python-dotenv = "^1.0.0"   # Environment variable management
 openai = "^1.88.0"
+azure-core = "^1.34.0"
+azure-ai-inference = "^1.0.0b9"
 
 [tool.poetry.group.dev.dependencies]
 black = "^23.7.0"
