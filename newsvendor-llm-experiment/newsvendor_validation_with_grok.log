@@ -1774,3 +1774,234 @@ Response headers:
 🤖 Grok participated in 18 negotiations
 2025-06-17 21:53:26,349 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
 2025-06-17 21:53:26,349 - core.unified_model_manager - INFO - Final stats: 124 generations, $2.3141 total cost
+2025-06-17 22:01:39,669 - __main__ - INFO - Initialized EnhancedValidationRunnerWithGrok - now with Grok support!
+2025-06-17 22:01:39,669 - __main__ - INFO - Total models: 11 (including Grok)
+2025-06-17 22:01:39,669 - __main__ - INFO - Initializing unified model manager with Grok support...
+2025-06-17 22:01:39,769 - core.unified_model_manager - INFO - ✅ Initialized AWS Bedrock client for Claude
+2025-06-17 22:01:39,926 - core.unified_model_manager - INFO - ✅ Initialized Azure OpenAI client for O3
+2025-06-17 22:01:39,970 - core.unified_model_manager - INFO - ✅ Initialized Azure AI client for Grok
+2025-06-17 22:01:39,970 - core.unified_model_manager - INFO - Initialized UnifiedModelManager with 10 models (including Azure AI Grok)
+2025-06-17 22:01:41,032 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:01:42,426 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:01:43,969 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:01:44,867 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:01:47,355 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:01:50,227 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:01:56,132 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:06,817 - core.unified_model_manager - ERROR - Generation failed for claude-sonnet-4-remote: An error occurred (ThrottlingException) when calling the InvokeModel operation (reached max retries: 4): Too many tokens, please wait before trying again.
+2025-06-17 22:02:12,728 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-06-17 22:02:12,730 - azure.core.pipeline.policies.http_logging_policy - INFO - Request URL: 'https://newsvendor-playground-resource.services.ai.azure.com/models/chat/completions?api-version=REDACTED'
+Request method: 'POST'
+Request headers:
+    'Content-Type': 'application/json'
+    'Content-Length': '261'
+    'Accept': 'application/json'
+    'x-ms-client-request-id': '4008d926-4be8-11f0-aa94-323dd73a73cc'
+    'api-key': 'REDACTED'
+    'User-Agent': 'azsdk-python-ai-inference/1.0.0b9 Python/3.13.3 (macOS-15.5-arm64-arm-64bit-Mach-O)'
+    'Authorization': 'REDACTED'
+A body is sent with the request
+2025-06-17 22:02:14,220 - azure.core.pipeline.policies.http_logging_policy - INFO - Response status: 200
+Response headers:
+    'Transfer-Encoding': 'chunked'
+    'Content-Type': 'application/json'
+    'Content-Encoding': 'REDACTED'
+    'Vary': 'REDACTED'
+    'request-context': 'REDACTED'
+    'prompt_token_len': 'REDACTED'
+    'sampling_token_len': 'REDACTED'
+    'apim-request-id': 'REDACTED'
+    'x-content-type-options': 'REDACTED'
+    'x-ms-region': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'Date': 'Wed, 18 Jun 2025 02:02:14 GMT'
+2025-06-17 22:02:14,222 - __main__ - INFO - ✅ Working models: 9
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 qwen2:1.5b
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 gemma2:2b
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 phi3:mini
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 llama3.2:latest
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 mistral:instruct
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 qwen:7b
+2025-06-17 22:02:14,222 - __main__ - INFO -    💻 qwen3:latest
+2025-06-17 22:02:14,222 - __main__ - INFO -    🌐 o3-remote ($0.020880)
+2025-06-17 22:02:14,222 - __main__ - INFO -    🤖 grok-remote (GROK) - $0.004000
+2025-06-17 22:02:14,222 - __main__ - WARNING - ❌ Failed models: ['claude-sonnet-4-remote']
+2025-06-17 22:02:14,222 - __main__ - INFO - Updated model lists to exclude 1 failed models
+2025-06-17 22:02:14,222 - __main__ - INFO - 🎉 Grok is ready for validation!
+2025-06-17 22:02:14,222 - __main__ - INFO - Model manager initialized successfully
+2025-06-17 22:02:14,222 - __main__ - INFO - 🚀 Quick validation mode: reducing test pairs
+2025-06-17 22:02:14,223 - __main__ - INFO - === ENHANCED VALIDATION PHASE WITH GROK ===
+2025-06-17 22:02:14,223 - __main__ - INFO - Testing all models including Grok with generous token limits
+2025-06-17 22:02:14,223 - __main__ - INFO - Running 10 validation negotiations...
+2025-06-17 22:02:14,223 - __main__ - INFO - 
+[1/10] Testing tinyllama:latest vs gemma2:2b (11)
+2025-06-17 22:02:14,561 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:14,562 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:14,562 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:14,562 - core.conversation_tracker - INFO - Initialized negotiation validation_001: tinyllama:latest vs gemma2:2b
+2025-06-17 22:02:14,563 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model tinyllama:latest, reflection=True
+2025-06-17 22:02:14,563 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model gemma2:2b, reflection=True
+2025-06-17 22:02:14,563 - agents.standardized_agents - ERROR - Buyer generation failed: Unknown model: tinyllama:latest
+2025-06-17 22:02:14,563 - __main__ - ERROR - Agent buyer failed to generate response: Unknown model: tinyllama:latest
+2025-06-17 22:02:14,563 - core.conversation_tracker - WARNING - Forced termination of validation_001: generation_failure
+2025-06-17 22:02:14,563 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 0 rounds (0.3s)
+2025-06-17 22:02:15,065 - __main__ - INFO - 
+[2/10] Testing qwen2:1.5b vs gemma2:2b (11)
+2025-06-17 22:02:15,138 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:15,138 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:15,138 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:15,139 - core.conversation_tracker - INFO - Initialized negotiation validation_002: qwen2:1.5b vs gemma2:2b
+2025-06-17 22:02:15,139 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen2:1.5b, reflection=True
+2025-06-17 22:02:15,139 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model gemma2:2b, reflection=True
+2025-06-17 22:02:16,322 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:17,982 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:18,688 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:19,822 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:20,528 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:21,666 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:22,385 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:22,387 - core.conversation_tracker - INFO - Negotiation validation_002 terminated by acceptance at $58
+2025-06-17 22:02:22,387 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 7 rounds (7.3s)
+2025-06-17 22:02:22,889 - __main__ - INFO - 
+[3/10] Testing gemma2:2b vs tinyllama:latest (11)
+2025-06-17 22:02:23,060 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:23,061 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:23,061 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:23,061 - core.conversation_tracker - INFO - Initialized negotiation validation_003: gemma2:2b vs tinyllama:latest
+2025-06-17 22:02:23,062 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model gemma2:2b, reflection=True
+2025-06-17 22:02:23,062 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 22:02:24,043 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:24,146 - agents.standardized_agents - ERROR - Supplier generation failed: Unknown model: tinyllama:latest
+2025-06-17 22:02:24,147 - __main__ - ERROR - Agent supplier failed to generate response: Unknown model: tinyllama:latest
+2025-06-17 22:02:24,147 - core.conversation_tracker - WARNING - Forced termination of validation_003: generation_failure
+2025-06-17 22:02:24,147 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 1 rounds (1.3s)
+2025-06-17 22:02:24,648 - __main__ - INFO - 
+[4/10] Testing phi3:mini vs tinyllama:latest (11)
+2025-06-17 22:02:24,784 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:24,784 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:24,784 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:24,784 - core.conversation_tracker - INFO - Initialized negotiation validation_004: phi3:mini vs tinyllama:latest
+2025-06-17 22:02:24,784 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model phi3:mini, reflection=True
+2025-06-17 22:02:24,784 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 22:02:26,630 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:26,733 - agents.standardized_agents - ERROR - Supplier generation failed: Unknown model: tinyllama:latest
+2025-06-17 22:02:26,733 - __main__ - ERROR - Agent supplier failed to generate response: Unknown model: tinyllama:latest
+2025-06-17 22:02:26,733 - core.conversation_tracker - WARNING - Forced termination of validation_004: generation_failure
+2025-06-17 22:02:26,734 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 1 rounds (2.1s)
+2025-06-17 22:02:27,235 - __main__ - INFO - 
+[5/10] Testing llama3.2:latest vs tinyllama:latest (11)
+2025-06-17 22:02:27,402 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:27,411 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:27,411 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:27,411 - core.conversation_tracker - INFO - Initialized negotiation validation_005: llama3.2:latest vs tinyllama:latest
+2025-06-17 22:02:27,411 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model llama3.2:latest, reflection=True
+2025-06-17 22:02:27,411 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 22:02:27,607 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:27,709 - agents.standardized_agents - ERROR - Supplier generation failed: Unknown model: tinyllama:latest
+2025-06-17 22:02:27,709 - __main__ - ERROR - Agent supplier failed to generate response: Unknown model: tinyllama:latest
+2025-06-17 22:02:27,710 - core.conversation_tracker - WARNING - Forced termination of validation_005: generation_failure
+2025-06-17 22:02:27,710 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 1 rounds (0.5s)
+2025-06-17 22:02:28,211 - __main__ - INFO - 
+[6/10] Testing mistral:instruct vs gemma2:2b (11)
+2025-06-17 22:02:28,299 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:28,300 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:28,300 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:28,300 - core.conversation_tracker - INFO - Initialized negotiation validation_006: mistral:instruct vs gemma2:2b
+2025-06-17 22:02:28,300 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model mistral:instruct, reflection=True
+2025-06-17 22:02:28,300 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model gemma2:2b, reflection=True
+2025-06-17 22:02:29,144 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:30,586 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:31,241 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:31,567 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:32,139 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:32,485 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:33,093 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:33,432 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:34,044 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:34,046 - core.conversation_tracker - INFO - Negotiation validation_006 terminated by convergence at $57
+2025-06-17 22:02:34,046 - __main__ - INFO - ✅ SUCCESS: Agreed on $57 in 9 rounds (5.8s)
+2025-06-17 22:02:34,548 - __main__ - INFO - 
+[7/10] Testing qwen:7b vs gemma2:2b (11)
+2025-06-17 22:02:34,711 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:34,712 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:34,712 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:34,712 - core.conversation_tracker - INFO - Initialized negotiation validation_007: qwen:7b vs gemma2:2b
+2025-06-17 22:02:34,712 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen:7b, reflection=True
+2025-06-17 22:02:34,712 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model gemma2:2b, reflection=True
+2025-06-17 22:02:38,231 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:39,672 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:41,516 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:41,518 - core.conversation_tracker - INFO - Negotiation validation_007 terminated by acceptance at $38
+2025-06-17 22:02:41,519 - __main__ - INFO - ✅ SUCCESS: Agreed on $38 in 3 rounds (7.0s)
+2025-06-17 22:02:42,020 - __main__ - INFO - 
+[8/10] Testing qwen3:latest vs mistral:instruct (11)
+2025-06-17 22:02:42,238 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:42,238 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:02:42,238 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:02:42,238 - core.conversation_tracker - INFO - Initialized negotiation validation_008: qwen3:latest vs mistral:instruct
+2025-06-17 22:02:42,238 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model qwen3:latest, reflection=True
+2025-06-17 22:02:42,238 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model mistral:instruct, reflection=True
+2025-06-17 22:02:53,546 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:02:54,992 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:03:28,173 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:03:28,175 - core.conversation_tracker - INFO - Negotiation validation_008 terminated by convergence at $58
+2025-06-17 22:03:28,176 - __main__ - INFO - ✅ SUCCESS: Agreed on $58 in 3 rounds (46.2s)
+2025-06-17 22:03:28,677 - __main__ - INFO - 
+[9/10] Testing o3-remote vs tinyllama:latest (11)
+2025-06-17 22:03:28,833 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:03:28,834 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:03:28,834 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:03:28,834 - core.conversation_tracker - INFO - Initialized negotiation validation_009: o3-remote vs tinyllama:latest
+2025-06-17 22:03:28,834 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model o3-remote, reflection=True
+2025-06-17 22:03:28,834 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 22:03:42,269 - httpx - INFO - HTTP Request: POST https://newsvendor-playground-resource.cognitiveservices.azure.com/openai/deployments/o3/chat/completions?api-version=2024-12-01-preview "HTTP/1.1 200 OK"
+2025-06-17 22:03:42,373 - agents.standardized_agents - ERROR - Supplier generation failed: Unknown model: tinyllama:latest
+2025-06-17 22:03:42,373 - __main__ - ERROR - Agent supplier failed to generate response: Unknown model: tinyllama:latest
+2025-06-17 22:03:42,373 - core.conversation_tracker - WARNING - Forced termination of validation_009: generation_failure
+2025-06-17 22:03:42,373 - __main__ - INFO - ✅ SUCCESS: Agreed on $None in 1 rounds (13.7s)
+2025-06-17 22:03:42,373 - __main__ - INFO -    💰 Cost: $0.066960
+2025-06-17 22:03:42,875 - __main__ - INFO - 
+[10/10] 🤖 GROK TEST: grok-remote vs tinyllama:latest (11)
+2025-06-17 22:03:43,038 - httpx - INFO - HTTP Request: POST http://127.0.0.1:11434/api/generate "HTTP/1.1 200 OK"
+2025-06-17 22:03:43,038 - core.conversation_tracker - INFO - Using llama3.2:latest for price extraction fallback
+2025-06-17 22:03:43,038 - parsing.enhanced_price_extractor - INFO - Enhanced price extractor initialized with llama3.2:latest fallback
+2025-06-17 22:03:43,038 - core.conversation_tracker - INFO - Initialized negotiation validation_010: grok-remote vs tinyllama:latest
+2025-06-17 22:03:43,039 - agents.standardized_agents - INFO - Initialized StandardizedBuyerAgent with model grok-remote, reflection=True
+2025-06-17 22:03:43,039 - agents.standardized_agents - INFO - Initialized StandardizedSupplierAgent with model tinyllama:latest, reflection=True
+2025-06-17 22:03:43,040 - azure.core.pipeline.policies.http_logging_policy - INFO - Request URL: 'https://newsvendor-playground-resource.services.ai.azure.com/models/chat/completions?api-version=REDACTED'
+Request method: 'POST'
+Request headers:
+    'Content-Type': 'application/json'
+    'Content-Length': '1138'
+    'Accept': 'application/json'
+    'x-ms-client-request-id': '75dd09a0-4be8-11f0-aa94-323dd73a73cc'
+    'api-key': 'REDACTED'
+    'User-Agent': 'azsdk-python-ai-inference/1.0.0b9 Python/3.13.3 (macOS-15.5-arm64-arm-64bit-Mach-O)'
+    'Authorization': 'REDACTED'
+A body is sent with the request
+2025-06-17 22:03:51,691 - azure.core.pipeline.policies.http_logging_policy - INFO - Response status: 200
+Response headers:
+    'Transfer-Encoding': 'chunked'
+    'Content-Type': 'application/json'
+    'Content-Encoding': 'REDACTED'
+    'Vary': 'REDACTED'
+    'request-context': 'REDACTED'
+    'prompt_token_len': 'REDACTED'
+    'sampling_token_len': 'REDACTED'
+    'apim-request-id': 'REDACTED'
+    'x-content-type-options': 'REDACTED'
+    'x-ms-region': 'REDACTED'
+    'Strict-Transport-Security': 'REDACTED'
+    'Date': 'Wed, 18 Jun 2025 02:03:51 GMT'
+2025-06-17 22:03:51,794 - agents.standardized_agents - ERROR - Supplier generation failed: Unknown model: tinyllama:latest
+2025-06-17 22:03:51,794 - __main__ - ERROR - Agent supplier failed to generate response: Unknown model: tinyllama:latest
+2025-06-17 22:03:51,794 - core.conversation_tracker - WARNING - Forced termination of validation_010: generation_failure
+2025-06-17 22:03:51,794 - __main__ - INFO - 🤖✅ SUCCESS: Agreed on $None in 1 rounds (8.9s)
+2025-06-17 22:03:51,794 - __main__ - INFO -    💰 Cost: $0.031160
+2025-06-17 22:03:52,303 - __main__ - INFO - Enhanced validation results with Grok saved to:
+2025-06-17 22:03:52,303 - __main__ - INFO -   Main results: validation_results_with_grok/validation_results_with_grok_20250617_220352.json
+2025-06-17 22:03:52,303 - __main__ - INFO -   Grok analysis: validation_results_with_grok/grok_performance_summary_20250617_220352.json
+2025-06-17 22:03:52,303 - __main__ - INFO - 
+🤖 Grok participated in 1 negotiations
+2025-06-17 22:03:52,303 - core.unified_model_manager - INFO - Shutting down UnifiedModelManager...
+2025-06-17 22:03:52,304 - core.unified_model_manager - INFO - Final stats: 36 generations, $0.1230 total cost

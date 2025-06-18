@@ -1,18 +1,6 @@
 # Model Configuration for Newsvendor Experiment v0.6 - No Token Limits!
 
 models:
-  # Ultra-Compact Models
-  tinyllama:latest:
-    id: "2644915ede35"
-    size_mb: 637
-    size_gb: 0.6
-    tier: "ultra"
-    chattiness: "very_low"
-    temperature: 0.3
-    top_p: 0.8
-    research_purpose: "Efficiency baseline"
-    architecture: "TinyLlama"
-    
   qwen2:1.5b:
     id: "f6daf2b25194"
     size_mb: 934
@@ -151,7 +139,7 @@ replication_matrix:
 
 # Model Categories for Analysis (Updated)
 tiers:
-  ultra: ["tinyllama:latest", "qwen2:1.5b"]
+  ultra: ["qwen2:1.5b"]
   compact: ["gemma2:2b", "phi3:mini", "llama3.2:latest"]
   mid: ["mistral:instruct", "qwen:7b"]
   large: ["qwen3:latest"]

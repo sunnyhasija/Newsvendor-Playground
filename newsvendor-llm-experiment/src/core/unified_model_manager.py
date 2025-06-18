@@ -160,7 +160,7 @@ class UnifiedModelManager:
         
         # Local models - no token limits, let them express naturally
         local_models = [
-            "tinyllama:latest", "qwen2:1.5b", "gemma2:2b", "phi3:mini",
+            "qwen2:1.5b", "gemma2:2b", "phi3:mini",
             "llama3.2:latest", "mistral:instruct", "qwen:7b", "qwen3:latest"
         ]
         
