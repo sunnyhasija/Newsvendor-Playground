@@ -9,20 +9,11 @@ __version__ = "0.5.0"
 __author__ = "Sunny Hasija"
 __email__ = "hasija.4@osu.edu"
 
-from .core.negotiation_engine import NegotiationEngine
-from .core.model_manager import OptimizedModelManager
-from .core.conversation_tracker import ConversationTracker
-from .agents.buyer_agent import BuyerAgent
-from .agents.supplier_agent import SupplierAgent
-from .parsing.price_extractor import RobustPriceExtractor
-from .parsing.acceptance_detector import AcceptanceDetector
+# Don't import anything at the package level to avoid circular imports
+# Import modules directly when needed instead
 
 __all__ = [
-    "NegotiationEngine",
-    "OptimizedModelManager", 
-    "ConversationTracker",
-    "BuyerAgent",
-    "SupplierAgent",
-    "RobustPriceExtractor",
-    "AcceptanceDetector",
+    "__version__",
+    "__author__", 
+    "__email__",
 ]

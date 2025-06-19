@@ -129,7 +129,7 @@ class EnhancedPriceExtractor:
                 fallback_result = await self._fallback_extraction(cleaned_text, text)
                 if fallback_result.price is not None:
                     # Validate fallback result
-                    if self._validate_price(fallback_result.price, previous_context, speaker_role):
+                    if self._validate_price(fallback_result.price, previous_context, speaker_role, text):
                         result = fallback_result
                         self.fallback_success_count += 1
                         if self.debug_mode:
@@ -173,7 +173,7 @@ class EnhancedPriceExtractor:
                     price = int(price_str)
                     
                     # Validate price
-                    if self._validate_price(price, previous_context, speaker_role):
+                    if self._validate_price(price, previous_context, speaker_role, original_text):
                         # Adjust confidence based on context
                         adjusted_confidence = self._adjust_confidence(
                             base_confidence, price, cleaned_text, speaker_role
@@ -338,7 +338,8 @@ Price:"""
         self, 
         price: int, 
         context: Optional[List[str]] = None, 
-        speaker_role: Optional[str] = None
+        speaker_role: Optional[str] = None,
+        message_text: str = ""
     ) -> bool:
         """Validate price reasonableness and role-specific constraints."""
         
@@ -356,11 +357,20 @@ Price:"""
                     logger.debug(f"Buyer price {price} too high (>= retail price)")
                 return False
         elif speaker_role == 'supplier':
-            # Suppliers shouldn't offer below cost (but allow some edge cases for research)
+            # Check if this is an acceptance vs an offer
+            is_acceptance = bool(re.search(r'\b(accept|agree[ds]?|deal|yes|ok|fine)\b', message_text, re.IGNORECASE))
+            
             if price <= 25:  # Well below production cost of $30
-                if self.debug_mode:
-                    logger.debug(f"Supplier price {price} extremely low (<= $25)")
-                return False
+                if is_acceptance:
+                    # Allow suppliers to accept low prices (they're echoing buyer's offer)
+                    if self.debug_mode:
+                        logger.debug(f"Supplier accepting low price ${price} - allowed as acceptance")
+                    return True
+                else:
+                    # Still reject unrealistic supplier offers
+                    if self.debug_mode:
+                        logger.debug(f"Supplier offering extremely low price ${price} - rejected")
+                    return False
         
         return True
     

@@ -15,14 +15,14 @@ from enum import Enum
 
 # Import enhanced price extractor
 try:
-    from parsing.enhanced_price_extractor import create_enhanced_price_extractor
+    from src.parsing.enhanced_price_extractor import create_enhanced_price_extractor
     ENHANCED_EXTRACTION_AVAILABLE = True
 except ImportError:
     # Fallback to original extractor
-    from parsing.price_extractor import RobustPriceExtractor
+    from src.parsing.price_extractor import RobustPriceExtractor
     ENHANCED_EXTRACTION_AVAILABLE = False
 
-from parsing.acceptance_detector import AcceptanceDetector, TerminationType
+from src.parsing.acceptance_detector import AcceptanceDetector, TerminationType
 
 logger = logging.getLogger(__name__)
 
