@@ -1,0 +1,510 @@
+"""
+Configuration Management for Newsvendor Experiment v0.6 - Turn Order Control
+
+Loads and validates configuration from YAML files with intelligent defaults
+and environment variable overrides. Enhanced for turn order research.
+"""
+
+import os
+import yaml
+import logging
+from pathlib import Path
+from typing import Dict, Any, Optional
+
+logger = logging.getLogger(__name__)
+
+
+def load_config(config_path: Optional[str] = None) -> Dict[str, Any]:
+    """
+    Load configuration from YAML files with intelligent defaults and v0.6 turn order support.
+    
+    Args:
+        config_path: Optional path to main config file
+        
+    Returns:
+        Combined configuration dictionary
+    """
+    
+    # Default configuration with v0.6 turn order control
+    default_config = {
+        # v0.6 NEW: Turn order configuration
+        'turn_order': {
+            'strategy': 'buyer_first',  # Options: "buyer_first", "supplier_first", "random"
+            'validation_enabled': True,
+            'track_first_speaker': True
+        },
+        'game': {
+            'selling_price': 100,
+            'production_cost': 30,
+            'demand_mean': 40,      # CORRECTED: Normal(40, 10)
+            'demand_std': 10,       # CORRECTED: Normal(40, 10)  
+            'optimal_price': 65,    # Fair split-the-difference
+            'max_rounds': 10,
+            'timeout_seconds': 60
+        },
+        'technical': {
+            'max_concurrent_models': 1,
+            'memory_limit_gb': 40,
+            'retry_attempts': 2,
+            'validation_checks': True,
+            # v0.6 Turn order technical requirements
+            'turn_order_tracking': {
+                'enabled': True,
+                'log_first_speaker': True,
+                'validate_alternation': True,
+                'context_assignment_logging': True
+            }
+        },
+        'metrics': {
+            'target_completion_rate': 0.95,
+            'target_convergence_rate': 0.85,
+            'target_price_optimality': 8,
+            'target_efficiency': 2000,
+            'target_invalid_rate': 0.05
+        },
+        'storage': {
+            'output_dir': './data',
+            'backup_enabled': True,
+            'compression_enabled': True,
+            'export_formats': ['csv', 'json']
+        },
+        # v0.6 Experimental design extensions
+        'experimental_design': {
+            'base_experiment': {
+                'reflection_patterns': ["00", "01", "10", "11"],
+                'replications_per_condition': 20,
+                'models': 10,
+                'total_negotiations': 8000
+            },
+            'turn_order_experiment': {
+                'turn_orders': ["buyer_first", "supplier_first"],
+                'reflection_conditions': ["without_reflection", "with_reflection"],
+                'replications_per_cell': 20
+            },
+            'research_hypotheses': {
+                'H1': "Buyer advantage persists in supplier-first conditions (literature bias)",
+                'H2': "Buyer advantage disappears in supplier-first conditions (anchoring bias only)",
+                'H3': "Buyer advantage reduces but remains in supplier-first (mixed effects)",
+                'H4': "Turn order interacts with reflection to affect outcomes"
+            }
+        },
+        'models': {
+            # REMOVED tinyllama:latest - not suitable for research
+            'qwen2:1.5b': {
+                'tier': 'ultra',
+                'temperature': 0.3,
+                'top_p': 0.8
+            },
+            'gemma2:2b': {
+                'tier': 'compact',
+                'temperature': 0.4,
+                'top_p': 0.85
+            },
+            'phi3:mini': {
+                'tier': 'compact',
+                'temperature': 0.4,
+                'top_p': 0.85
+            },
+            'llama3.2:latest': {
+                'tier': 'compact',
+                'temperature': 0.4,
+                'top_p': 0.85
+            },
+            'mistral:instruct': {
+                'tier': 'mid',
+                'temperature': 0.5,
+                'top_p': 0.9
+            },
+            'qwen:7b': {
+                'tier': 'mid',
+                'temperature': 0.5,
+                'top_p': 0.9
+            },
+            'qwen3:latest': {
+                'tier': 'large',
+                'temperature': 0.6,
+                'top_p': 0.95
+            },
+            'claude-sonnet-4-remote': {
+                'tier': 'premium',
+                'temperature': 0.5,
+                'top_p': 0.9
+            },
+            'o3-remote': {
+                'tier': 'premium',
+                'temperature': 1.0,
+                'top_p': 1.0
+            },
+            'grok-remote': {
+                'tier': 'premium',
+                'temperature': 1.0,
+                'top_p': 1.0
+            }
+        }
+    }
+    
+    # Try to find config files
+    config_files = []
+    
+    # 1. Explicit config path
+    if config_path and Path(config_path).exists():
+        config_files.append(Path(config_path))
+    
+    # 2. Standard locations
+    standard_locations = [
+        Path('./config/experiment.yaml'),
+        Path('./config/experiment.yml'),
+        Path('./experiment.yaml'),
+        Path('./experiment.yml')
+    ]
+    
+    for location in standard_locations:
+        if location.exists():
+            config_files.append(location)
+            break
+    
+    # Load and merge configurations
+    config = default_config.copy()
+    
+    for config_file in config_files:
+        try:
+            logger.info(f"Loading configuration from: {config_file}")
+            with open(config_file, 'r') as f:
+                file_config = yaml.safe_load(f)
+            
+            if file_config:
+                config = deep_merge(config, file_config)
+                
+        except Exception as e:
+            logger.error(f"Error loading config from {config_file}: {e}")
+    
+    # Apply environment variable overrides
+    config = apply_env_overrides(config)
+    
+    # Validate configuration
+    validate_config(config)
+    
+    logger.info("Configuration loaded successfully (v0.6 with turn order control)")
+    return config
+
+
+def deep_merge(base: Dict[str, Any], override: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Deep merge two dictionaries.
+    
+    Args:
+        base: Base dictionary
+        override: Dictionary to merge in
+        
+    Returns:
+        Merged dictionary
+    """
+    result = base.copy()
+    
+    for key, value in override.items():
+        if key in result and isinstance(result[key], dict) and isinstance(value, dict):
+            result[key] = deep_merge(result[key], value)
+        else:
+            result[key] = value
+    
+    return result
+
+
+def apply_env_overrides(config: Dict[str, Any]) -> Dict[str, Any]:
+    """
+    Apply environment variable overrides to configuration.
+    
+    Environment variables should be prefixed with NEWSVENDOR_ and use
+    double underscores to indicate nesting (e.g., NEWSVENDOR_TURN_ORDER__STRATEGY=supplier_first)
+    """
+    
+    env_overrides = {}
+    prefix = "NEWSVENDOR_"
+    
+    for env_var, value in os.environ.items():
+        if not env_var.startswith(prefix):
+            continue
+        
+        # Remove prefix and convert to nested dict structure
+        key_path = env_var[len(prefix):].lower().split('__')
+        
+        # Convert string values to appropriate types
+        converted_value = convert_env_value(value)
+        
+        # Build nested dictionary
+        current = env_overrides
+        for key in key_path[:-1]:
+            if key not in current:
+                current[key] = {}
+            current = current[key]
+        
+        current[key_path[-1]] = converted_value
+    
+    if env_overrides:
+        logger.info(f"Applying environment overrides: {list(env_overrides.keys())}")
+        config = deep_merge(config, env_overrides)
+    
+    return config
+
+
+def convert_env_value(value: str) -> Any:
+    """Convert environment variable string to appropriate Python type."""
+    
+    # Boolean conversion
+    if value.lower() in ('true', 'false'):
+        return value.lower() == 'true'
+    
+    # Integer conversion
+    try:
+        if '.' not in value:
+            return int(value)
+    except ValueError:
+        pass
+    
+    # Float conversion
+    try:
+        return float(value)
+    except ValueError:
+        pass
+    
+    # List conversion (comma-separated)
+    if ',' in value:
+        return [item.strip() for item in value.split(',')]
+    
+    # Return as string
+    return value
+
+
+def validate_config(config: Dict[str, Any]) -> None:
+    """
+    Validate configuration for correctness and consistency including v0.6 turn order settings.
+    
+    Args:
+        config: Configuration dictionary to validate
+        
+    Raises:
+        ValueError: If configuration is invalid
+    """
+    
+    # v0.6 Validate turn order configuration
+    turn_order = config.get('turn_order', {})
+    strategy = turn_order.get('strategy', 'buyer_first')
+    
+    valid_strategies = ['buyer_first', 'supplier_first', 'random']
+    if strategy not in valid_strategies:
+        raise ValueError(f"turn_order.strategy must be one of {valid_strategies}, got: {strategy}")
+    
+    # Validate game parameters
+    game = config.get('game', {})
+    
+    if game.get('selling_price', 0) <= 0:
+        raise ValueError("selling_price must be positive")
+    
+    if game.get('production_cost', 0) <= 0:
+        raise ValueError("production_cost must be positive")
+    
+    if game.get('production_cost', 0) >= game.get('selling_price', 100):
+        raise ValueError("production_cost must be less than selling_price")
+    
+    if game.get('demand_mean', 0) <= 0:
+        raise ValueError("demand_mean must be positive")
+    
+    if game.get('demand_std', 0) <= 0:
+        raise ValueError("demand_std must be positive")
+    
+    if game.get('max_rounds', 0) <= 0:
+        raise ValueError("max_rounds must be positive")
+    
+    # Validate technical parameters
+    technical = config.get('technical', {})
+    
+    if technical.get('max_concurrent_models', 0) <= 0:
+        raise ValueError("max_concurrent_models must be positive")
+    
+    if technical.get('memory_limit_gb', 0) <= 0:
+        raise ValueError("memory_limit_gb must be positive")
+    
+    # Validate model configurations
+    models = config.get('models', {})
+    
+    # Check that TinyLlama is not in the config
+    if 'tinyllama:latest' in models:
+        logger.warning("TinyLlama found in config - this model has been removed from the experiment")
+        del models['tinyllama:latest']
+    
+    for model_name, model_config in models.items():
+        if not isinstance(model_config, dict):
+            raise ValueError(f"Model config for {model_name} must be a dictionary")
+        
+        temp = model_config.get('temperature', 0.5)
+        if not (0.0 <= temp <= 2.0):
+            raise ValueError(f"temperature for {model_name} must be between 0.0 and 2.0")
+        
+        top_p = model_config.get('top_p', 0.9)
+        if not (0.0 <= top_p <= 1.0):
+            raise ValueError(f"top_p for {model_name} must be between 0.0 and 1.0")
+    
+    # v0.6 Validate experimental design configuration
+    exp_design = config.get('experimental_design', {})
+    base_exp = exp_design.get('base_experiment', {})
+    turn_exp = exp_design.get('turn_order_experiment', {})
+    
+    # Validate reflection patterns
+    reflection_patterns = base_exp.get('reflection_patterns', [])
+    valid_patterns = ["00", "01", "10", "11"]
+    for pattern in reflection_patterns:
+        if pattern not in valid_patterns:
+            raise ValueError(f"Invalid reflection pattern: {pattern}. Must be one of {valid_patterns}")
+    
+    # Validate turn orders for v0.6 experiment
+    turn_orders = turn_exp.get('turn_orders', [])
+    valid_turn_orders = ["buyer_first", "supplier_first", "random"]
+    for order in turn_orders:
+        if order not in valid_turn_orders:
+            raise ValueError(f"Invalid turn order: {order}. Must be one of {valid_turn_orders}")
+    
+    logger.info("Configuration validation passed (v0.6 with turn order control)")
+
+
+def get_turn_order_strategy(config: Dict[str, Any]) -> str:
+    """Get the turn order strategy from configuration."""
+    return config.get('turn_order', {}).get('strategy', 'buyer_first')
+
+
+def set_turn_order_strategy(config: Dict[str, Any], strategy: str) -> None:
+    """Set the turn order strategy in configuration."""
+    valid_strategies = ['buyer_first', 'supplier_first', 'random']
+    if strategy not in valid_strategies:
+        raise ValueError(f"Invalid strategy: {strategy}. Must be one of {valid_strategies}")
+    
+    if 'turn_order' not in config:
+        config['turn_order'] = {}
+    
+    config['turn_order']['strategy'] = strategy
+    logger.info(f"Turn order strategy set to: {strategy}")
+
+
+def create_turn_order_config(base_strategy: str = 'buyer_first') -> Dict[str, Any]:
+    """Create a turn order specific configuration."""
+    config = load_config()
+    set_turn_order_strategy(config, base_strategy)
+    return config
+
+
+def save_config(config: Dict[str, Any], output_path: str) -> None:
+    """
+    Save configuration to YAML file.
+    
+    Args:
+        config: Configuration dictionary
+        output_path: Path to save configuration
+    """
+    
+    output_file = Path(output_path)
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    with open(output_file, 'w') as f:
+        yaml.dump(config, f, default_flow_style=False, indent=2)
+    
+    logger.info(f"Configuration saved to: {output_file}")
+
+
+def get_model_list(config: Dict[str, Any]) -> list[str]:
+    """Get list of available models from configuration (excluding TinyLlama)."""
+    models = list(config.get('models', {}).keys())
+    # Ensure TinyLlama is not in the list
+    return [m for m in models if m != 'tinyllama:latest']
+
+
+def get_model_config(config: Dict[str, Any], model_name: str) -> Dict[str, Any]:
+    """Get configuration for a specific model."""
+    models = config.get('models', {})
+    if model_name == 'tinyllama:latest':
+        logger.warning("TinyLlama has been removed from the experiment")
+        return {}
+    return models.get(model_name, {})
+
+
+def create_default_config_files() -> None:
+    """Create default configuration files in the config directory (v0.6 with turn order)."""
+    
+    config_dir = Path('./config')
+    config_dir.mkdir(exist_ok=True)
+    
+    # Load default config
+    default_config = load_config()
+    
+    # Split into separate files
+    files_to_create = {
+        'experiment.yaml': {
+            'turn_order': default_config['turn_order'],
+            'game': default_config['game'],
+            'technical': default_config['technical'],
+            'metrics': default_config['metrics'],
+            'storage': default_config['storage'],
+            'experimental_design': default_config['experimental_design']
+        },
+        'models.yaml': {
+            'models': default_config['models']
+        }
+    }
+    
+    for filename, file_config in files_to_create.items():
+        file_path = config_dir / filename
+        if not file_path.exists():
+            with open(file_path, 'w') as f:
+                yaml.dump(file_config, f, default_flow_style=False, indent=2)
+            logger.info(f"Created default config: {file_path} (v0.6 with turn order control)")
+
+
+def get_experiment_summary() -> Dict[str, Any]:
+    """Get a summary of the current experiment configuration including v0.6 features."""
+    config = load_config()
+    models = get_model_list(config)
+    turn_order_strategy = get_turn_order_strategy(config)
+    
+    return {
+        "version": "0.6",
+        "new_features": ["turn_order_control", "anchoring_vs_literature_research"],
+        "total_models": len(models),
+        "models_included": models,
+        "models_excluded": ["tinyllama:latest"],
+        "models_added": ["grok-remote"],
+        "reflection_patterns": ["00", "01", "10", "11"],
+        "turn_order_strategies": ["buyer_first", "supplier_first", "random"],
+        "current_turn_order": turn_order_strategy,
+        "replications_per_condition": 20,
+        "total_negotiations": len(models) ** 2 * 4 * 20,
+        "estimated_duration_hours": len(models) ** 2 * 4 * 20 * 2 / 60 / 60,  # 2 minutes per negotiation
+        "research_questions": [
+            "Does buyer advantage persist when suppliers go first?",
+            "Can we separate literature bias from anchoring effects?",
+            "How does turn order interact with reflection?"
+        ],
+        "v06_innovations": {
+            "configurable_turn_order": True,
+            "identical_prompts": True,
+            "context_assignment_control": True,
+            "research_integrity_maintained": True
+        }
+    }
+
+
+if __name__ == '__main__':
+    # Create default configuration files
+    create_default_config_files()
+    
+    # Test configuration loading
+    config = load_config()
+    print("Configuration loaded successfully (v0.6 with turn order control):")
+    print(yaml.dump(config, default_flow_style=False, indent=2))
+    
+    # Print experiment summary
+    summary = get_experiment_summary()
+    print("\nExperiment Summary (v0.6):")
+    print(f"  Version: {summary['version']}")
+    print(f"  Models: {summary['total_models']} (TinyLlama removed)")
+    print(f"  Turn order strategy: {summary['current_turn_order']}")
+    print(f"  Total negotiations: {summary['total_negotiations']:,}")
+    print(f"  Research focus: Literature bias vs anchoring effects")
+    print(f"  Key innovation: Configurable turn order with identical prompts")

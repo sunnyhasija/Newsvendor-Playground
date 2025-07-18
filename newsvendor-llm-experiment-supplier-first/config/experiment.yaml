@@ -1,0 +1,153 @@
+# Experimental Configuration for Newsvendor v0.6 - Turn Order Control
+
+# v0.6 NEW: Turn Order Strategy Configuration
+turn_order:
+  strategy: "buyer_first"  # Options: "buyer_first", "supplier_first", "random"
+  # v0.6 RESEARCH PURPOSE: Control turn order to isolate literature bias from anchoring effects
+
+# Game Parameters (CORRECTED)
+game:
+  selling_price: 100  # Retail price (known to buyer only)
+  production_cost: 30  # Supplier cost (known to supplier only)
+  demand_distribution:
+    type: "normal"
+    mean: 40  # CORRECTED: was Uniform[50,150]
+    std: 10   # CORRECTED: Normal(40, 10)
+  optimal_wholesale_price: 65  # Fair split-the-difference
+  
+# Negotiation Rules
+negotiation:
+  max_rounds: 10
+  timeout_seconds: 60
+  price_range:
+    min: 1
+    max: 200
+  buyer_price_range:
+    min: 1
+    max: 99
+  supplier_price_range:
+    min: 31
+    max: 200
+  
+# Success Metrics
+metrics:
+  target_completion_rate: 0.95
+  target_convergence_rate: 0.85
+  target_price_optimality: 8  # Median gap ≤ $8 from $65
+  target_fairness_range: [35, 65]  # 35-65% profit split
+  target_efficiency: 2000  # <2000 tokens/negotiation
+  target_invalid_rate: 0.05  # <5% invalid responses
+
+# v0.6 Experimental Design Extensions
+experimental_design:
+  # Original 4x4x20 design maintained
+  base_experiment:
+    reflection_patterns: ["00", "01", "10", "11"]
+    replications_per_condition: 20
+    models: 10
+    total_negotiations: 8000  # 10 × 10 × 4 × 20
+  
+  # v0.6 Turn Order Extension
+  turn_order_experiment:
+    # NEW: 2×2 factorial design for turn order research
+    turn_orders: ["buyer_first", "supplier_first"]
+    reflection_conditions: ["without_reflection", "with_reflection"]  # Simplified to 2x2
+    replications_per_cell: 20
+    # Total additional negotiations: 2 × 2 × 10 × 10 × 20 = 8,000 more
+  
+  # v0.6 Research Questions
+  research_hypotheses:
+    H1: "Buyer advantage persists in supplier-first conditions (literature bias)"
+    H2: "Buyer advantage disappears in supplier-first conditions (anchoring bias only)"
+    H3: "Buyer advantage reduces but remains in supplier-first (mixed effects)"
+    H4: "Turn order interacts with reflection to affect outcomes"
+
+# Execution Phases
+phases:
+  validation:
+    reps: 1
+    timeout: 30
+    duration_hours: 2
+    
+  statistical_power:
+    reps: 3
+    timeout: 45
+    duration_hours: 6
+    
+  full_dataset:
+    reps: 5
+    timeout: 60
+    duration_hours: 12
+  
+  # v0.6 NEW: Turn order validation phase
+  turn_order_validation:
+    reps: 1
+    models_subset: 5  # Test with subset of models first
+    turn_orders: ["buyer_first", "supplier_first"]
+    duration_hours: 4
+    purpose: "Validate turn order control system before full experiment"
+
+# Technical Configuration
+technical:
+  max_concurrent_models: 1  # Start conservative, test concurrency
+  memory_limit_gb: 40
+  retry_attempts: 2
+  validation_checks: true
+  real_time_monitoring: true
+  
+  # v0.6 Turn Order Technical Requirements
+  turn_order_tracking:
+    enabled: true
+    log_first_speaker: true
+    validate_alternation: true
+    context_assignment_logging: true
+  
+# Analysis Configuration
+analysis:
+  statistical_tests:
+    - "chi_squared"
+    - "welch_t_test"
+    - "mann_whitney_u"
+    - "anova"
+    - "cohens_d"
+    - "cramers_v"
+    # v0.6 NEW: Turn order specific tests
+    - "turn_order_anova"
+    - "anchoring_effect_test"
+    - "literature_bias_isolation"
+  
+  visualizations:
+    - "convergence_heatmap"
+    - "price_optimality_boxplot"
+    - "token_efficiency_scatter"
+    - "price_distribution_violin"
+    - "model_synergy_network"
+    - "learning_curves"
+    # v0.6 NEW: Turn order visualizations
+    - "turn_order_comparison"
+    - "anchoring_vs_literature_effects"
+    - "first_mover_advantage_analysis"
+    
+  export_formats: ["csv", "json", "parquet"]
+  
+  # v0.6 Turn Order Analysis Controls
+  control_variables:
+    - "turn_order_strategy"
+    - "first_speaker"
+    - "reflection_pattern"
+    - "model_pair"
+  
+# Storage Configuration
+storage:
+  raw_transcripts_mb: 35
+  processed_datasets_mb: 20
+  analysis_outputs_mb: 100
+  total_storage_mb: 150
+  backup_enabled: true
+  compression_enabled: true
+  
+  # v0.6 Extended storage for turn order data
+  turn_order_extensions:
+    additional_negotiations_mb: 35  # For supplier-first experiments
+    turn_order_metadata_mb: 5
+    comparative_analysis_mb: 20

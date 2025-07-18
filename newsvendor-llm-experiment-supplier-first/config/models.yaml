@@ -1,0 +1,177 @@
+# Model Configuration for Newsvendor Experiment v0.6 - No Token Limits!
+
+models:
+  qwen2:1.5b:
+    id: "f6daf2b25194"
+    size_mb: 934
+    size_gb: 0.9
+    tier: "ultra"
+    chattiness: "low"
+    temperature: 0.3
+    top_p: 0.8
+    research_purpose: "Modern ultra-compact"
+    architecture: "Qwen2"
+
+  # Compact Models
+  gemma2:2b:
+    id: "8ccf136fdd52"
+    size_mb: 1600
+    size_gb: 1.6
+    tier: "compact"
+    chattiness: "low"
+    temperature: 0.4
+    top_p: 0.85
+    research_purpose: "Google's latest 2B"
+    architecture: "Gemma2"
+    
+  phi3:mini:
+    id: "4f2222927938"
+    size_mb: 2200
+    size_gb: 2.2
+    tier: "compact"
+    chattiness: "low_medium"
+    temperature: 0.4
+    top_p: 0.85
+    research_purpose: "Microsoft's mini"
+    architecture: "Phi3"
+    
+  llama3.2:latest:
+    id: "a80c4f17acd5"
+    size_mb: 2000
+    size_gb: 2.0
+    tier: "compact"
+    chattiness: "medium_low"
+    temperature: 0.4
+    top_p: 0.85
+    research_purpose: "Meta's efficient"
+    architecture: "Llama3.2"
+
+  # Mid-Range Models
+  mistral:instruct:
+    id: "3944fe81ec14"
+    size_mb: 4100
+    size_gb: 4.1
+    tier: "mid"
+    chattiness: "medium"
+    temperature: 0.5
+    top_p: 0.9
+    research_purpose: "Instruction-tuned"
+    architecture: "Mistral"
+    
+  qwen:7b:
+    id: "2091ee8c8d8f"
+    size_mb: 4500
+    size_gb: 4.5
+    tier: "mid"
+    chattiness: "medium"
+    temperature: 0.5
+    top_p: 0.9
+    research_purpose: "Multilingual standard"
+    architecture: "Qwen"
+
+  # Large/Chatty Control
+  qwen3:latest:
+    id: "500a1f067a9f"
+    size_mb: 5200
+    size_gb: 5.2
+    tier: "large"
+    chattiness: "high"
+    temperature: 0.6
+    top_p: 0.95
+    research_purpose: "Verbose control"
+    architecture: "Qwen3"
+
+  # Remote Models - No Token Limits!
+  claude-sonnet-4-remote:
+    tier: "premium"
+    chattiness: "high"
+    temperature: 0.5
+    top_p: 0.9
+    research_purpose: "Premium reasoning and analysis"
+    architecture: "Claude Sonnet 4"
+    cost_per_token: 0.000075
+    provider: "AWS Bedrock"
+    max_tokens: null  # No artificial limits - use service maximum
+
+  o3-remote:
+    tier: "premium"
+    chattiness: "very_high"
+    temperature: 1.0
+    top_p: 0.95
+    research_purpose: "Advanced reasoning with thinking"
+    architecture: "O3 Mini"
+    cost_per_token: 0.000240
+    provider: "Azure OpenAI"
+    reasoning_enabled: true
+    max_tokens: null  # No artificial limits - let O3 reason fully
+
+  grok-remote:
+    tier: "premium"
+    chattiness: "high"
+    temperature: 1.0
+    top_p: 1.0
+    research_purpose: "Fast reasoning and wit via Azure AI"
+    architecture: "Grok 3 Mini"
+    cost_per_token: 0.000020
+    provider: "Azure AI Services"
+    model_name: "grok-3-mini"
+    api_version: "2024-05-01-preview"
+    endpoint: "https://newsvendor-playground-resource.services.ai.azure.com/models"
+    max_tokens: null  # No artificial limits - let Grok express naturally
+
+# Replication Strategy by Model Tier (Updated for Grok)
+replication_matrix:
+  ultra_ultra: 50
+  ultra_compact: 40
+  ultra_mid: 30
+  ultra_large: 20
+  ultra_premium: 3      # New: ultra vs premium (including Grok)
+  compact_compact: 40
+  compact_mid: 30
+  compact_large: 20
+  compact_premium: 3    # New: compact vs premium
+  mid_mid: 30
+  mid_large: 20
+  mid_premium: 2        # New: mid vs premium
+  large_large: 20
+  large_premium: 2      # New: large vs premium
+  premium_premium: 1    # New: premium vs premium (expensive combinations)
+
+# Model Categories for Analysis (Updated)
+tiers:
+  ultra: ["qwen2:1.5b"]
+  compact: ["gemma2:2b", "phi3:mini", "llama3.2:latest"]
+  mid: ["mistral:instruct", "qwen:7b"]
+  large: ["qwen3:latest"]
+  premium: ["claude-sonnet-4-remote", "o3-remote", "grok-remote"]  # Updated with Grok
+
+# Reflection Configuration - No Token Limits!
+reflection:
+  structured_template: true
+  validation_required: true
+  # Removed all token limits - let models reflect naturally
+
+# Cost Management (Updated for Azure AI Grok)
+cost_estimates:
+  grok_cost_per_1k_tokens: 0.020  # $0.02 per 1K tokens (estimated)
+  claude_cost_per_1k_tokens: 0.075
+  o3_cost_per_1k_tokens: 0.240
+  daily_budget_limit: 50.0        # $50/day limit
+  experiment_budget_limit: 200.0  # $200 total experiment limit
+
+# Provider Configuration (Updated)
+providers:
+  azure_ai:
+    base_url: "https://newsvendor-playground-resource.services.ai.azure.com/models"
+    models: ["grok-3-mini"]
+    api_version: "2024-05-01-preview"
+    rate_limit_rpm: 60        # 60 requests per minute (estimated)
+    rate_limit_tpm: 100000    # 100K tokens per minute (estimated)
+    
+  anthropic_bedrock:
+    models: ["claude-sonnet-4"]
+    rate_limit_rpm: 50
+    
+  azure_openai:
+    models: ["o3-mini"]
+    rate_limit_rpm: 30

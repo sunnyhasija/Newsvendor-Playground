@@ -1,0 +1,311 @@
+# Newsvendor LLM Experiment - Git Ignore File
+# ==============================================
+# Comprehensive gitignore for both original and supplier-first experiments
+# Covers all generated output files, analysis results, and temporary data
+
+# Python
+# --------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# PyInstaller
+*.manifest
+*.spec
+
+# Installer logs
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Unit test / coverage reports
+htmlcov/
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+
+# Environments & Secrets
+# ----------------------
+.env
+.venv
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+# API keys and credentials
+api_keys.txt
+credentials.json
+secrets.yaml
+
+# IDEs & Editors
+# --------------
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.sublime-project
+.sublime-workspace
+
+# Operating System
+# ----------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Experiment Output Directories
+# =============================
+
+# Data Storage (Raw & Processed)
+# ------------------------------
+data/
+raw_data/
+processed_data/
+experiments/*/
+full_results/
+validation_results*/
+experiment_results/
+complete_analysis/
+complete_results/
+
+# Analysis & Reports 
+# ------------------
+analysis/
+analysis_output/
+analysis_results/
+arxiv_analysis/
+outputs/
+reports/
+statistics/
+metrics/
+visualizations/
+
+# Turn Order Specific (v0.6)
+# ---------------------------
+turn_order_analysis/
+buyer_first/
+supplier_first/
+comparative_analysis/
+bias_decomposition/
+
+# Generated Files by Type
+# =======================
+
+# Data Files
+# ----------
+*.csv
+*.json
+*.parquet
+*.xlsx
+*.feather
+*.pickle
+*.pkl
+
+# Compressed Archives
+# ------------------
+*.gz
+*.zip
+*.tar
+*.bz2
+*.xz
+
+# Backup Files
+# ------------
+*.backup
+*.bak
+*.orig
+*.tmp
+*.temp
+*~backup*
+*_backup_*
+
+# Log Files
+# ---------
+*.log
+*.log.*
+newsvendor*.log
+experiment*.log
+validation*.log
+turn_order*.log
+
+# Generated Reports & Analysis
+# ----------------------------
+*_report_*.md
+*_analysis_*.md
+*_results_*.md
+comprehensive_*_analysis_*.json
+turn_order_comparison_*.json
+analysis_*_*.json
+report_*_*.md
+
+# Visualization Files
+# ------------------
+*.png
+*.jpg
+*.jpeg
+*.pdf
+*.svg
+*.eps
+*.html
+# Interactive plots and dashboards
+*dashboard*.html
+*interactive*.html
+
+# Model & Experiment Artifacts
+# ============================
+
+# Model Outputs & Cache
+# ---------------------
+model_cache/
+model_outputs/
+generation_cache/
+response_cache/
+
+# Experiment Metadata
+# -------------------
+experiment_metadata/
+negotiation_transcripts/
+conversation_logs/
+turn_logs/
+
+# Research Data
+# ------------
+research_data/
+publication_data/
+arxiv_data/
+paper_figures/
+
+# Temporary & Working Files
+# =========================
+
+# Jupyter Notebooks (checkpoints)
+.ipynb_checkpoints/
+
+# Temporary Python files
+*.pyc
+*.pyo
+*.pyd
+
+# Lock files (unless specifically needed)
+.lock
+*.lock
+
+# Documentation Build
+# -------------------
+docs/_build/
+docs/build/
+site/
+
+# Development & Testing
+# ====================
+
+# Test outputs
+test_results/
+test_outputs/
+test_data/
+
+# Coverage reports
+.coverage*
+htmlcov/
+
+# Profiling data
+*.prof
+*.stats
+
+# Configuration overrides (keep templates)
+# ----------------------------------------
+config/local_*.yaml
+config/override_*.yaml
+config/personal_*.yaml
+local_config.*
+
+# Specific Project Exclusions
+# ===========================
+
+# Keep important configuration templates
+!config/experiment.yaml
+!config/models.yaml  
+!config/prompts.yaml
+
+# Keep source code and core files
+!src/
+!*.py
+!*.md
+!*.yaml
+!*.yml
+!*.toml
+!*.lock
+!Makefile
+!LICENSE
+!README*
+
+# Keep documentation
+!docs/
+!*.rst
+!*.txt
+
+# Special Cases
+# =============
+
+# Allow specific result files that are meant to be tracked
+# (uncomment if needed for specific files)
+# !important_results.json
+# !baseline_results.csv
+
+# System and Editor temporary files
+**/Thumbs.db
+**/.DS_Store
+**/*.swp
+**/*.swo
+
+# Node modules (if any JavaScript tools used)
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Research Paper Drafts (if in repo)
+# ----------------------------------
+# *.docx
+# *.doc  
+# *.pdf
+# draft_*
+# submission_*
+
+# ==============================================
+# End of Newsvendor LLM Experiment .gitignore
+# This file covers both original and v0.6 turn order experiments
+# Last updated: Implementation of v0.6 Turn Order Control System
