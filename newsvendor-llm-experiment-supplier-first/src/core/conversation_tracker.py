@@ -19,11 +19,12 @@ from enum import Enum
 
 # Import enhanced price extractor
 try:
-    from src.parsing.enhanced_price_extractor import create_enhanced_price_extractor
+    from src.parsing.enhanced_price_extractor import create_enhanced_price_extractor, EnhancedPriceExtractor
     ENHANCED_EXTRACTION_AVAILABLE = True
 except ImportError:
-    # Fallback to original extractor
-    from src.parsing.price_extractor import RobustPriceExtractor
+    # Fallback - no enhanced extractor available
+    create_enhanced_price_extractor = None
+    EnhancedPriceExtractor = None
     ENHANCED_EXTRACTION_AVAILABLE = False
 
 from src.parsing.acceptance_detector import AcceptanceDetector, TerminationType
@@ -103,6 +104,8 @@ class ConversationTracker:
         self.termination_type: Optional[TerminationType] = None
         self.agreed_price: Optional[int] = None
         self.completed = False
+        self.aborted = False
+        self.error_message: Optional[str] = None
         
         # Price tracking for convergence detection
         self.last_prices = deque(maxlen=5)  # Track recent prices
@@ -155,9 +158,9 @@ class ConversationTracker:
         """Initialize price extractor with fallback capability if available."""
         
         if not ENHANCED_EXTRACTION_AVAILABLE:
-            # Use original extractor as fallback
-            logger.info("Enhanced price extractor not available, using traditional extraction")
-            return RobustPriceExtractor(self.config)
+            # Enhanced extractor not available - create a simple fallback
+            logger.warning("Enhanced price extractor not available, using simple fallback")
+            return self._create_simple_fallback_extractor()
         
         try:
             # Try to initialize enhanced extractor with local model fallback
@@ -196,8 +199,53 @@ class ConversationTracker:
                 
         except Exception as e:
             logger.warning(f"Could not initialize enhanced price extractor: {e}")
-            logger.info("Falling back to traditional price extraction")
-            return RobustPriceExtractor(self.config)
+            logger.info("Falling back to simple extraction")
+            return self._create_simple_fallback_extractor()
+    
+    def _create_simple_fallback_extractor(self):
+        """Create a simple fallback price extractor when enhanced version is not available."""
+        
+        class SimplePriceExtractor:
+            """Simple regex-based price extractor fallback."""
+            
+            def __init__(self, config=None):
+                self.config = config or {}
+                self.price_range = self.config.get('price_range', {'min': 1, 'max': 200})
+            
+            def extract_price(self, text, previous_context=None, speaker_role=None):
+                """Simple price extraction using basic regex."""
+                import re
+                
+                # Basic price extraction patterns
+                patterns = [
+                    r'(?:offer|propose)\s*\$?(\d{1,3})\b',
+                    r'\$(\d{1,3})\b',
+                    r'(\d{1,3})\s*dollars?\b',
+                    r'\b(\d{1,3})\b'
+                ]
+                
+                for pattern in patterns:
+                    matches = re.findall(pattern, text, re.IGNORECASE)
+                    if matches:
+                        try:
+                            price = int(matches[-1])
+                            if self.price_range['min'] <= price <= self.price_range['max']:
+                                return price
+                        except ValueError:
+                            continue
+                
+                return None
+            
+            def get_extraction_stats(self):
+                """Return basic stats for compatibility."""
+                return {
+                    "total_attempts": 0,
+                    "successful_extractions": 0,
+                    "fallback_enabled": False,
+                    "enhanced_extraction_available": False
+                }
+        
+        return SimplePriceExtractor(self.config)
     
     async def add_turn(
         self, 
@@ -334,6 +382,12 @@ class ConversationTracker:
             self.completed = True
             logger.warning(f"Forced termination of {self.negotiation_id}: {reason}")
     
+    def abort_due_to_error(self, message: str) -> None:
+        """Mark negotiation as aborted due to error with enhanced error tracking."""
+        self.aborted = True
+        self.error_message = message
+        self.force_termination(f"aborted: {message}")
+    
     def get_current_state(self) -> Dict[str, Any]:
         """Get current negotiation state summary with v0.6 turn order info."""
         return {
@@ -459,6 +513,12 @@ class ConversationTracker:
                 "first_speaker": self.first_speaker,
                 "opening_advantage": self.first_speaker == "buyer" if self.agreed_price else None,
                 "anchoring_effect": self.turns[0].price if self.turns and self.turns[0].price else None
+            },
+            # Error tracking for publication-grade error handling
+            "error_tracking": {
+                "aborted": self.aborted,
+                "error_message": self.error_message,
+                "has_error": self.aborted or not self.completed
             }
         }
         

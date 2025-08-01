@@ -17,8 +17,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, Any, List, Optional, Tuple
 from dataclasses import dataclass, asdict
-import pandas as pd
-import numpy as np
 import click
 try:
     from tqdm.asyncio import tqdm
@@ -31,11 +29,10 @@ except ImportError:
 # Add src to path for imports
 sys.path.append(str(Path(__file__).parent / "src"))
 
-# Configure logging with enhanced error tracking
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s [%(name)s] %(message)s",
-    datefmt="%H:%M:%S",
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
     handlers=[
         logging.FileHandler('newsvendor_turn_order_experiment.log'),
         logging.StreamHandler()
@@ -50,8 +47,6 @@ from core.conversation_tracker import ConversationTracker, NegotiationResult
 from parsing.acceptance_detector import TerminationType
 from utils.config_loader import load_config, get_turn_order_strategy, set_turn_order_strategy
 from utils.data_exporter import DataExporter
-from src.analysis.metrics_calculator import MetricsCalculator
-import pandas as pd
 
 
 @dataclass
@@ -491,56 +486,43 @@ class TurnOrderExperimentRunner:
         semaphore = asyncio.Semaphore(self.max_concurrent)
         
         # Progress tracking
-        last_milestone_report = time.time()
         progress_bar = tqdm(total=len(negotiations), desc="Turn Order Negotiations")
         completed_count = 0
         total_cost = 0.0
         
         async def run_single_negotiation(config_and_id: Tuple[TurnOrderExperimentConfig, str]) -> NegotiationResult:
-            nonlocal completed_count, total_cost, last_milestone_report
+            nonlocal completed_count, total_cost
             
             config, negotiation_id = config_and_id
             
             async with semaphore:
                 try:
                     result = await self._run_single_turn_order_negotiation(config, negotiation_id)
-                except Exception as e:
-                    logging.exception(f"Unhandled exception in negotiation {negotiation_id}")
-                    result = self._create_failed_result(config, negotiation_id, e)
-                
-                # Update progress
-                completed_count += 1
-                negotiation_cost = result.metadata.get('total_cost', 0.0)
-                total_cost += negotiation_cost
-                
-                # ---- milestone logging ----
-                if (completed_count % 100 == 0) or (time.time() - last_milestone_report > 300):
-                    throttle_events = sum(self.throttle_counts.values()) if hasattr(self, "throttle_counts") else 0
-                    logging.info(
-                        f"✅ Progress: {completed_count}/{len(negotiations)} "
-                        f"({len([r for r in results if r.completed]) + (1 if result.completed else 0)} successes, ${total_cost:.2f} spent)"
-                    )
-                    if throttle_events:
-                        logging.info(
-                            f"🐌 Throttling: {throttle_events} events across "
-                            f"{len(self.throttle_counts)} models"
-                        )
-                    last_milestone_report = time.time()
-                # ---- end milestone logging ----
                     
-                # Update progress bar
-                progress_bar.update(1)
-                success_count = len([r for r in results if r.completed]) + (1 if result.completed else 0)
-                progress_bar.set_postfix({
-                    "Done": f"{completed_count}/{len(negotiations)}",
-                    "Success": f"{success_count}",
-                    "Succ-Rate": f"{success_count/completed_count*100:.1f}%",
-                    "Cost $": f"{total_cost:.2f}",
-                    "Avg $": f"{total_cost/completed_count:.3f}",
-                    "ETA": self._estimate_remaining_time(completed_count, len(negotiations))
-                })
-                
-                return result
+                    # Update progress
+                    completed_count += 1
+                    negotiation_cost = result.metadata.get('total_cost', 0.0)
+                    total_cost += negotiation_cost
+                    
+                    # Update progress bar
+                    progress_bar.update(1)
+                    progress_bar.set_postfix({
+                        'Success': f"{result.completed}",
+                        'Price': f"${result.agreed_price}" if result.agreed_price else "None",
+                        'Turn Order': f"{result.turn_order_strategy}",
+                        'First': f"{result.first_speaker}",
+                        'Cost': f"${total_cost:.2f}"
+                    })
+                    
+                    # Log milestone progress
+                    if completed_count % 50 == 0:
+                        logger.info(f"✅ Progress: {completed_count}/{len(negotiations)} (${total_cost:.2f} spent)")
+                    
+                    return result
+                    
+                except Exception as e:
+                    logger.error(f"Failed negotiation {negotiation_id}: {e}")
+                    return self._create_failed_result(config, negotiation_id, str(e))
         
         try:
             # Create all tasks
@@ -619,13 +601,11 @@ class TurnOrderExperimentRunner:
     ) -> NegotiationResult:
         """Conduct the actual negotiation with turn order control."""
         
-        # ---- cost tracking start ----
-        total_cost = 0.0
-        start_time = time.time()
-        # ---- cost tracking end ----
-        
         timeout_seconds = self.game_config.get('timeout_seconds', 120)
         max_rounds = self.game_config.get('max_rounds', 10)
+        
+        start_time = time.time()
+        total_cost = 0.0
         
         try:
             # Main negotiation loop (identical logic, but tracker handles turn order)
@@ -649,42 +629,33 @@ class TurnOrderExperimentRunner:
                 # Apply smart throttling before API call
                 await self._apply_smart_throttling(current_agent.model_name)
                 
-                # Get agent response with throttling retry logic and error handling
-                try:
-                    response = await self._generate_with_throttling_retry(
-                        current_agent,
-                        context,
-                        tracker,
-                        max_rounds,
-                        max_retries=3
-                    )
-                    
-                    if not response or not response.success:
-                        logging.error(f"Negotiation {tracker.negotiation_id} failed during generation: {response.error if response else 'No response'}")
-                        tracker.force_termination("generation_failure")
-                        break
-                    
-                    # Track cost
-                    if response and response.success:
-                        total_cost += getattr(response, "cost_estimate", 0.0)
-                    
-                    # Add turn to conversation
-                    turn_added = await tracker.add_turn(
-                        speaker=agent_role,
-                        message=response.text,
-                        reflection=None,
-                        tokens_used=response.tokens_used,
-                        generation_time=response.generation_time
-                    )
-                    
-                    if not turn_added:
-                        logging.error(f"Negotiation {tracker.negotiation_id} failed during turn addition")
-                        tracker.force_termination("turn_error")
-                        break
-                        
-                except Exception as e:
-                    logging.exception(f"Unhandled exception in negotiation {tracker.negotiation_id} during round {tracker.round_number}")
-                    tracker.force_termination(f"error: {str(e)}")
+                # Get agent response with throttling retry logic
+                response = await self._generate_with_throttling_retry(
+                    current_agent,
+                    context,
+                    tracker,
+                    max_rounds,
+                    max_retries=3
+                )
+                
+                if not response or not response.success:
+                    tracker.force_termination("generation_failure")
+                    break
+                
+                # Track cost
+                total_cost += getattr(response, 'cost_estimate', 0.0)
+                
+                # Add turn to conversation
+                turn_added = await tracker.add_turn(
+                    speaker=agent_role,
+                    message=response.text,
+                    reflection=None,
+                    tokens_used=response.tokens_used,
+                    generation_time=response.generation_time
+                )
+                
+                if not turn_added:
+                    tracker.force_termination("turn_error")
                     break
                 
                 # Check for early termination
@@ -713,14 +684,14 @@ class TurnOrderExperimentRunner:
         negotiation_id: str, 
         error: str
     ) -> NegotiationResult:
-        """Create a failed negotiation result with enhanced metadata for publication-grade error tracking."""
+        """Create a failed negotiation result with turn order information."""
         return NegotiationResult(
             negotiation_id=negotiation_id,
             buyer_model=config.buyer_model,
             supplier_model=config.supplier_model,
             reflection_pattern=config.reflection_pattern,
-            turn_order_strategy=config.turn_order_strategy,
-            first_speaker="unknown",
+            turn_order_strategy=config.turn_order_strategy,  # v0.6 NEW
+            first_speaker="unknown",  # v0.6 NEW
             completed=False,
             agreed_price=None,
             termination_type=TerminationType.FAILURE,
@@ -731,15 +702,7 @@ class TurnOrderExperimentRunner:
             supplier_profit=None,
             distance_from_optimal=None,
             turns=[],
-            metadata={
-                "error": str(error),
-                "error_type": type(error).__name__ if isinstance(error, Exception) else "unknown",
-                "timestamp": datetime.now().isoformat(),
-                "phase": "initialization",
-                "models": [config.buyer_model, config.supplier_model],
-                "reflection_pattern": config.reflection_pattern,
-                "total_cost": 0.0
-            }
+            metadata={"error": error}
         )
     
     def _analyze_turn_order_results(self, results: List[NegotiationResult]) -> Dict[str, Any]:
@@ -751,10 +714,6 @@ class TurnOrderExperimentRunner:
         if not results:
             return {"error": "No results to analyze"}
         
-        # Convert results to DataFrame for metrics calculator
-        df = pd.DataFrame([asdict(r) for r in results])
-        calc = MetricsCalculator()
-        
         analysis = {
             "experiment_summary": {
                 "version": "0.6",
@@ -764,32 +723,12 @@ class TurnOrderExperimentRunner:
                 "success_rate": len(successful_results) / total_results,
                 "completion_time_hours": (time.time() - self.start_time) / 3600 if self.start_time else 0
             },
-            "failure_summary": {
-                "total_failures": len([r for r in results if not r.completed]),
-                "by_error_type": {}
-            },
-            "comprehensive_metrics": calc.generate_summary_report(df),
             "turn_order_analysis": self._analyze_turn_order_effects(results),
             "throttling_analysis": self._analyze_throttling_impact(results),
-            "cost_analysis": {
-                "total_cost": sum(r.metadata.get("total_cost", 0.0) for r in results),
-                "avg_cost_per_negotiation":
-                    sum(r.metadata.get("total_cost", 0.0) for r in results) / len(results)
-                    if results else 0.0,
-                "cost_by_model": self._calculate_cost_by_model(results),
-                "cost_efficiency": self._calculate_cost_efficiency(results)
-            },
             "research_findings": {},
             "comparative_analysis": {},
             "statistical_tests": {}
         }
-        
-        # Populate failure analysis by error type
-        for r in results:
-            if not r.completed:
-                et = r.metadata.get("error_type", "unknown")
-                analysis["failure_summary"]["by_error_type"][et] = \
-                    analysis["failure_summary"]["by_error_type"].get(et, 0) + 1
         
         # Detailed turn order analysis
         if successful_results:
@@ -977,44 +916,6 @@ class TurnOrderExperimentRunner:
         mean = sum(values) / len(values)
         variance = sum((x - mean) ** 2 for x in values) / (len(values) - 1)
         return variance ** 0.5
-    
-    def _estimate_remaining_time(self, completed_count: int, total_count: int) -> str:
-        """Estimate remaining time for progress bar."""
-        if completed_count <= 0 or not self.start_time:
-            return "Unknown"
-        
-        elapsed_time = time.time() - self.start_time
-        avg_time_per_negotiation = elapsed_time / completed_count
-        remaining_negotiations = total_count - completed_count
-        estimated_remaining_seconds = remaining_negotiations * avg_time_per_negotiation
-        
-        if estimated_remaining_seconds < 60:
-            return f"{estimated_remaining_seconds:.0f}s"
-        elif estimated_remaining_seconds < 3600:
-            return f"{estimated_remaining_seconds/60:.0f}m"
-        else:
-            return f"{estimated_remaining_seconds/3600:.1f}h"
-    
-    def _calculate_cost_by_model(self, results: List[NegotiationResult]) -> Dict[str, float]:
-        cost_by_model: Dict[str, float] = {}
-        for r in results:
-            cost = r.metadata.get("total_cost", 0.0)
-            for model in [r.buyer_model, r.supplier_model]:
-                cost_by_model[model] = cost_by_model.get(model, 0.0) + cost / 2
-        return cost_by_model
-    
-    def _calculate_cost_efficiency(self, results: List[NegotiationResult]) -> Dict[str, float]:
-        successful = [r for r in results if r.completed and r.agreed_price]
-        if not successful:
-            return {"error": "No successful negotiations"}
-        total_cost = sum(r.metadata.get("total_cost", 0.0) for r in successful)
-        total_success = len(successful)
-        return {
-            "cost_per_successful_negotiation": total_cost / total_success,
-            "cost_per_dollar_saved": total_cost / sum(
-                abs(r.agreed_price - 65) for r in successful),
-            "efficiency_score": total_success / (total_cost + 1)
-        }
     
     async def _save_turn_order_results(self, results: List[NegotiationResult], analysis: Dict[str, Any]) -> None:
         """Save turn order experiment results."""
