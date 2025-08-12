@@ -23,6 +23,7 @@ from pathlib import Path
 import json
 from scipy import stats
 from scipy.stats import norm
+from scipy.stats import ttest_ind
 import warnings
 warnings.filterwarnings('ignore')
 
@@ -269,7 +270,7 @@ def interpret_effect_size(cohens_d):
         'direction': direction
     }
 
-def run_mixed_effects_analysis(df, midpoint=65.0):
+def run_mixed_effects_analysis(df, midpoint=62.9):
     """Run linear mixed-effects model with random intercepts for model-pair.
     
     Model: price ~ 1 + role + anchor + role:anchor + (1 | model_pair)
@@ -672,7 +673,7 @@ def sequential_analysis_guidance(power_results):
     print(f"   For large effects: {sample_size_for_power(0.8, power=0.8)} per group")
     print(f"   For small effects: {sample_size_for_power(0.2, power=0.8)} per group")
 
-def analyze_turn_order_effects(df, midpoint=65.0):
+def analyze_turn_order_effects(df, midpoint=62.9):
     """Analyze turn order effects: literature bias vs anchoring relative to negotiation midpoint."""
     
     print("🔬 TURN ORDER ANALYSIS - Literature Bias vs Anchoring Effects")
@@ -729,14 +730,29 @@ def analyze_turn_order_effects(df, midpoint=65.0):
     print(f"   Anchoring effect magnitude: ${abs(price_difference):.2f}")
     print()
     
-    # Statistical significance test
-    t_stat, p_value = stats.ttest_ind(bf_prices, sf_prices)
+    # Statistical significance test with degrees of freedom
+    t_stat, p_value = stats.ttest_ind(bf_prices, sf_prices, equal_var=False)
+    
+    # Calculate degrees of freedom for Welch's t-test (Welch-Satterthwaite equation)
+    n1, n2 = len(bf_prices), len(sf_prices)
+    s1, s2 = bf_prices.var(ddof=1), sf_prices.var(ddof=1)
+    
+    # Welch's degrees of freedom formula
+    df_welch = (s1/n1 + s2/n2)**2 / ((s1/n1)**2/(n1-1) + (s2/n2)**2/(n2-1))
     
     print(f"📈 Statistical Test (Welch's t-test):")
-    print(f"   t-statistic: {t_stat:.3f}")
+    print(f"   t({df_welch:.1f}) = {t_stat:.3f}")
     print(f"   p-value: {p_value:.6f}")
     print(f"   Significant: {'Yes' if p_value < 0.05 else 'No'} (α = 0.05)")
-    print()
+    
+    # For publication-ready reporting:
+    if p_value < 0.001:
+        p_report = "p < 0.001"
+    else:
+        p_report = f"p = {p_value:.3f}"
+    
+    print(f"   📝 Publication format: t({df_welch:.1f}) = {t_stat:.3f}, {p_report}")
+    print() 
     
     # Literature bias significance tests (one-sample t-tests vs midpoint)
     print(f"🧪 Literature Bias Significance Tests:")
@@ -865,7 +881,7 @@ def main():
         results = analyze_turn_order_effects(df)
         
         # FIXED: Mixed-effects analysis with proper statsmodels detection
-        mixed_effects_results = run_mixed_effects_analysis(df, midpoint=65.0)
+        mixed_effects_results = run_mixed_effects_analysis(df, midpoint=62.9)
         
         # Comprehensive power analysis
         power_results = power_analysis_summary(df)

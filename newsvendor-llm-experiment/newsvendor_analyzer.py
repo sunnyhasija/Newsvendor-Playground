@@ -44,7 +44,7 @@ class NewsvendorAnalyzer:
         self.analysis_results = {}
         
         # Constants from the experiment
-        self.OPTIMAL_PRICE = 65
+        self.OPTIMAL_PRICE = 62.90
         self.RETAIL_PRICE = 100
         self.PRODUCTION_COST = 30
         self.DEMAND_MEAN = 40
@@ -59,7 +59,7 @@ class NewsvendorAnalyzer:
             'llama3.2:latest': 'Compact',
             'mistral:instruct': 'Mid-Range',
             'qwen:7b': 'Mid-Range', 
-            'qwen3:latest': 'Large',
+            'qwen3:latest': 'Mid-Range',
             # Remote models (new tier)
             'claude-sonnet-4-remote': 'Premium',
             'o3-remote': 'Premium',

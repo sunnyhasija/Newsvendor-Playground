@@ -39,7 +39,7 @@ class ArXivQualityAnalyzer:
         self.analysis_results = {}
         
         # Research design constants
-        self.OPTIMAL_PRICE = 65
+        self.OPTIMAL_PRICE = 62.90
         self.ALPHA = 0.05
         self.BONFERRONI_CORRECTION = True
         self.EFFECT_SIZE_THRESHOLDS = {
@@ -50,7 +50,7 @@ class ArXivQualityAnalyzer:
         self.MODEL_TIERS = {
             'qwen2:1.5b': 'Ultra', 'gemma2:2b': 'Compact', 'phi3:mini': 'Compact',
             'llama3.2:latest': 'Compact', 'mistral:instruct': 'Mid-Range', 
-            'qwen:7b': 'Mid-Range', 'qwen3:latest': 'Large',
+            'qwen:7b': 'Mid-Range', 'qwen3:latest': 'Mid-Range',
             'claude-sonnet-4-remote': 'Premium', 'o3-remote': 'Premium', 'grok-remote': 'Premium'
         }
         
@@ -118,7 +118,9 @@ class ArXivQualityAnalyzer:
         self.successful_data['supplier_tier'] = self.successful_data['supplier_model'].map(self.MODEL_TIERS)
         self.successful_data['buyer_arch'] = self.successful_data['buyer_model'].map(self.MODEL_ARCHITECTURES)
         self.successful_data['supplier_arch'] = self.successful_data['supplier_model'].map(self.MODEL_ARCHITECTURES)
-        
+        # Generate descriptive statistics by condition
+        self.descriptive_stats = self.generate_descriptive_table()
+
         success_rate = len(self.successful_data) / len(self.data)
         logger.info(f"True success rate: {success_rate:.1%} ({len(self.successful_data):,} successful)")
         
@@ -127,6 +129,34 @@ class ArXivQualityAnalyzer:
         
         return True
     
+    def generate_descriptive_table(self) -> Dict[str, Any]:
+        """Generate descriptive statistics by reflection condition for Table 1."""
+        
+        descriptives = {}
+        
+        for pattern in ['00', '01', '10', '11']:
+            pattern_data = self.successful_data[self.successful_data['reflection_pattern'] == pattern]
+            pattern_total = self.data[self.data['reflection_pattern'] == pattern]
+            
+            if len(pattern_data) > 0:
+                prices = pattern_data['agreed_price']
+                advantages = pattern_data['buyer_advantage']
+                distances = pattern_data['distance_from_optimal']
+                
+                descriptives[pattern] = {
+                    'total_attempts': len(pattern_total),
+                    'completed': len(pattern_data), 
+                    'success_rate': len(pattern_data) / len(pattern_total),
+                    'final_price_mean': prices.mean(),
+                    'final_price_std': prices.std(),
+                    'buyer_advantage_mean': advantages.mean(),
+                    'buyer_advantage_std': advantages.std(),
+                    'distance_optimal_mean': distances.mean(),
+                    'distance_optimal_std': distances.std()
+                }
+        
+        return descriptives
+
     def _validate_experimental_design(self):
         """Validate experimental design for publication standards."""
         logger.info("📋 Experimental Design Validation")
@@ -252,7 +282,7 @@ class ArXivQualityAnalyzer:
         
         self.analysis_results['statistical_tests'] = statistical_results
         return statistical_results
-    
+
     def _test_statistical_assumptions(self) -> Dict[str, Any]:
         """Test all statistical assumptions for publication quality."""
         logger.info("📐 Testing Statistical Assumptions")
@@ -361,7 +391,7 @@ class ArXivQualityAnalyzer:
         tier_groups = []
         tier_labels = []
         
-        for tier in ['Ultra', 'Compact', 'Mid-Range', 'Large', 'Premium']:
+        for tier in ['Ultra', 'Compact', 'Mid-Range', 'Premium']:
             # Combine buyer and supplier data for this tier
             tier_data = pd.concat([
                 self.successful_data[self.successful_data['buyer_tier'] == tier]['agreed_price'],
@@ -507,9 +537,16 @@ class ArXivQualityAnalyzer:
                     'significant_pairs': []
                 }
                 
+                # DEBUG: Print raw Tukey results
+                print("\n" + "="*50)
+                print("RAW TUKEY HSD RESULTS FOR REFLECTION PATTERNS")
+                print("="*50)
+                print(tukey)
+                print("="*50)
+
                 # Extract significant pairs
                 for i, row in enumerate(tukey.summary().data[1:]):
-                    if row[5] == 'True':  # reject null hypothesis
+                    if row[5] == True or str(row[5]).lower() == 'true':  # reject null hypothesis
                         posthoc['reflection_tukey']['significant_pairs'].append({
                             'group1': row[0],
                             'group2': row[1], 
@@ -524,7 +561,7 @@ class ArXivQualityAnalyzer:
         
         # Pairwise comparisons for model tiers
         tier_comparisons = []
-        tiers = ['Ultra', 'Compact', 'Mid-Range', 'Large', 'Premium']
+        tiers = ['Ultra', 'Compact', 'Mid-Range', 'Premium']
         
         for tier1, tier2 in combinations(tiers, 2):
             tier1_data = pd.concat([
@@ -568,7 +605,23 @@ class ArXivQualityAnalyzer:
             }
             
             logger.info(f"Tier comparisons: {posthoc['tier_pairwise']['significant_count']}/{len(tier_comparisons)} significant after Bonferroni")
-        
+            # DEBUG: Print raw tier pairwise comparison results
+            print("\n" + "="*60)
+            print("RAW MODEL TIER PAIRWISE COMPARISONS (BONFERRONI CORRECTED)")
+            print("="*60)
+            print(f"Bonferroni-corrected alpha: {bonferroni_alpha:.6f}")
+            print(f"Number of comparisons: {len(tier_comparisons)}")
+            print("-" * 60)
+            for comp in tier_comparisons:
+                sig_marker = "***" if comp['significant_bonferroni'] else ""
+                print(f"{comp['tier1']} vs {comp['tier2']}:")
+                print(f"  Mean difference: ${comp['mean_diff']:.2f}")
+                print(f"  t-statistic: {comp['t_statistic']:.3f}")
+                print(f"  p-value: {comp['p_value']:.6f} {sig_marker}")
+                print(f"  Cohen's d: {comp['cohens_d']:.3f}")
+                print(f"  Significant (Bonferroni): {comp['significant_bonferroni']}")
+                print()
+            print("="*60)
         return posthoc
     
     def _comprehensive_effect_sizes(self) -> Dict[str, Any]:
@@ -809,9 +862,9 @@ class ArXivQualityAnalyzer:
                        yerr=reflection_sems, capsize=5, alpha=0.7)
         ax1.axhline(y=self.OPTIMAL_PRICE, color='red', linestyle='--', linewidth=2, 
                    label=f'Optimal (${self.OPTIMAL_PRICE})')
-        ax1.set_title('(A) Reflection Pattern Effects')
+        ax1.set_title('(A) Metacognitive Reflection Effects')
         ax1.set_ylabel('Mean Agreed Price ($)')
-        ax1.set_xlabel('Reflection Pattern')
+        ax1.set_xlabel('Metacognitive Reflection')
         ax1.legend()
         
         # Add significance indicators if available
@@ -827,7 +880,7 @@ class ArXivQualityAnalyzer:
         tier_sems = []
         tier_labels = []
         
-        for tier in ['Ultra', 'Compact', 'Mid-Range', 'Large', 'Premium']:
+        for tier in ['Ultra', 'Compact', 'Mid-Range', 'Premium']:
             data = pd.concat([
                 self.successful_data[self.successful_data['buyer_tier'] == tier]['agreed_price'],
                 self.successful_data[self.successful_data['supplier_tier'] == tier]['agreed_price']
@@ -845,14 +898,39 @@ class ArXivQualityAnalyzer:
         ax2.set_ylabel('Mean Agreed Price ($)')
         ax2.set_xlabel('Model Tier')
         
-        # Panel 3: Buyer advantage distribution
+
+        # Panel 3: Price deviation distribution (zoomed)
         buyer_advantages = self.successful_data['buyer_advantage']
-        ax3.hist(buyer_advantages, bins=50, alpha=0.7, density=True, color='steelblue')
+
+        # Calculate distribution statistics for zooming
+        q5, q95 = np.percentile(buyer_advantages, [5, 95])
+        mean_val = buyer_advantages.mean()
+        std_val = buyer_advantages.std()
+
+        # Set reasonable x-axis limits (choose one approach):
+        # Option 1: Use percentiles (recommended)
+        x_min = q5 - 10  # Add small buffer beyond 5th percentile
+        x_max = q95 + 10  # Add small buffer beyond 95th percentile
+
+        # Option 2: Use mean ± 3 standard deviations (alternative)
+        # x_min = mean_val - 3 * std_val
+        # x_max = mean_val + 3 * std_val
+
+        # Create histogram with zoomed range
+        ax3.hist(buyer_advantages, bins=50, alpha=0.7, density=True, color='steelblue', 
+                range=(x_min, x_max))
+
+        # Add reference lines
         ax3.axvline(x=0, color='red', linestyle='--', linewidth=2, label='No advantage')
-        ax3.axvline(x=buyer_advantages.mean(), color='orange', linestyle='--', linewidth=2, 
-                   label=f'Mean (${buyer_advantages.mean():.2f})')
-        ax3.set_title('(C) Buyer Advantage Distribution')
-        ax3.set_xlabel('Buyer Advantage ($)')
+        ax3.axvline(x=mean_val, color='orange', linestyle='--', linewidth=2, 
+                label=f'Mean (${mean_val:.2f})')
+
+        # Set axis limits explicitly
+        ax3.set_xlim(x_min, x_max)
+
+        # Labels and formatting
+        ax3.set_title('(C) Price Deviation Distribution')
+        ax3.set_xlabel('Price Deviation ($)')
         ax3.set_ylabel('Density')
         ax3.legend()
         
@@ -867,13 +945,39 @@ class ArXivQualityAnalyzer:
                     verticalalignment='top', fontsize=10,
                     bbox=dict(boxstyle='round', facecolor='white', alpha=0.8))
         
-        # Panel 4: Price convergence to optimal
+        # Panel 4: Distance from optimal price (zoomed)
         distances = self.successful_data['distance_from_optimal']
-        bins = np.arange(0, distances.max() + 5, 5)
-        counts, _ = np.histogram(distances, bins=bins)
+
+        # Calculate distribution statistics for zooming
+        q95 = np.percentile(distances, 95)
+        q99 = np.percentile(distances, 99)
+
+        # Set reasonable upper limit (since distance is always >= 0)
+        # Option 1: Use 95th percentile with buffer (recommended)
+        x_max = q95 + 10
+
+        # Option 2: Use 99th percentile (alternative - less aggressive)
+        # x_max = q99
+
+        # Option 3: Fixed reasonable limit if you know what looks good
+        # x_max = 100  # or whatever makes sense for your data
+
+        # Create bins only up to the zoom limit
+        bin_width = 5
+        bins = np.arange(0, x_max + bin_width, bin_width)
+
+        # Filter data to zoom range and create histogram
+        distances_filtered = distances[distances <= x_max]
+        counts, _ = np.histogram(distances_filtered, bins=bins)
         bin_centers = (bins[:-1] + bins[1:]) / 2
-        
-        ax4.bar(bin_centers, counts, width=4, alpha=0.7, color='lightgreen')
+
+        # Create bar plot
+        ax4.bar(bin_centers, counts, width=bin_width-0.5, alpha=0.7, color='lightgreen')
+
+        # Set axis limits
+        ax4.set_xlim(0, x_max)
+
+        # Labels and formatting
         ax4.set_title('(D) Distance from Optimal Price')
         ax4.set_xlabel('Distance from Optimal ($)')
         ax4.set_ylabel('Number of Negotiations')
@@ -1009,7 +1113,7 @@ class ArXivQualityAnalyzer:
         
         ax4.bar(reflection_groups.index, reflection_groups.values, alpha=0.7, color='mediumpurple')
         ax4.set_title('(D) Sample Sizes by Condition')
-        ax4.set_xlabel('Reflection Pattern')
+        ax4.set_xlabel('Metacognitive Reflection')
         ax4.set_ylabel('Number of Negotiations')
         
         # Add minimum sample size line for medium effect detection
@@ -1114,12 +1218,32 @@ We present a large-scale empirical investigation of strategic negotiation behavi
 
 ## 2. Results
 
-### 2.1 Descriptive Statistics
+### 2.1 Descriptive Statistics by Reflection Condition
 
-**Success Rate:** {len(self.successful_data)/len(self.data):.1%} ({len(self.successful_data):,}/{len(self.data):,} negotiations)
-**Mean Agreed Price:** ${self.successful_data['agreed_price'].mean():.2f} (SD = ${self.successful_data['agreed_price'].std():.2f})
-**Distance from Optimal:** ${self.successful_data['distance_from_optimal'].mean():.2f} (SD = ${self.successful_data['distance_from_optimal'].std():.2f})
-**Buyer Advantage:** ${self.successful_data['buyer_advantage'].mean():.2f} (SD = ${self.successful_data['buyer_advantage'].std():.2f})
+| Condition | Description | n | Success Rate | Final Price ($) | Buyer Advantage ($) | Distance from Optimal ($) |
+|-----------|-------------|---|--------------|-----------------|-------------------|---------------------------|"""
+
+        # Add descriptive statistics table
+        if hasattr(self, 'descriptive_stats'):
+            pattern_names = {
+                '00': 'No Reflection',
+                '01': 'Buyer Only', 
+                '10': 'Supplier Only',
+                '11': 'Both Reflect'
+            }
+            
+            for pattern in ['00', '01', '10', '11']:
+                if pattern in self.descriptive_stats:
+                    stats = self.descriptive_stats[pattern]
+                    report += f"| {pattern} | {pattern_names[pattern]} | {stats['completed']:,} | {stats['success_rate']:.1%} | ${stats['final_price_mean']:.2f} (±{stats['final_price_std']:.2f}) | ${stats['buyer_advantage_mean']:.2f} (±{stats['buyer_advantage_std']:.2f}) | ${stats['distance_optimal_mean']:.2f} (±{stats['distance_optimal_std']:.2f}) |\n"
+        
+        report += f"""
+
+**Overall Summary:**
+- **Total Negotiations:** {len(self.data):,}
+- **Overall Success Rate:** {len(self.successful_data)/len(self.data):.1%}
+- **Mean Agreed Price:** ${self.successful_data['agreed_price'].mean():.2f}
+- **Mean Buyer Advantage:** ${self.successful_data['buyer_advantage'].mean():.2f}
 
 ### 2.2 Statistical Assumptions
 
